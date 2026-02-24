@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1386491679 &1
+PresetManager:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_DefaultPresets:
+  - first:
+      m_NativeTypeID: 198
+      m_ManagedTypePPtr: {fileID: 0}
+      m_ManagedTypeFallback: 
+    second:
+    - m_Preset: {fileID: 2655988077585873504, guid: 112b7bb0200c62441aed0f3670eb0083,
+        type: 2}
+      m_Filter: 
+      m_Disabled: 0
+  - first:
+      m_NativeTypeID: 1006
+      m_ManagedTypePPtr: {fileID: 0}
+      m_ManagedTypeFallback: 
+    second:
+    - m_Preset: {fileID: 2655988077585873504, guid: 3b10359830e346a46b2448e4826bbf53,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/UI/**.PNG"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: 3b10359830e346a46b2448e4826bbf53,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/UI/**.png"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/INGAME/**.png"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/INGAME/**.PNG"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/SCENE/**.png"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/SCENE/**.PNG"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/ILLUST/**.png"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/ILLUST/**.PNG"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/PREFAB/**.png"
+      m_Disabled: 0
+    - m_Preset: {fileID: 2655988077585873504, guid: e43f463c6c164675b9170adf2e1eb11c,
+        type: 2}
+      m_Filter: glob:"Assets/_GAME_ASSETS/PREFAB/**.PNG"
+      m_Disabled: 0

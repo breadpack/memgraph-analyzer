@@ -1,0 +1,657 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &1
+MonoBehaviour:
+  m_ObjectHideFlags: 53
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e07c9b2c97f84356bb2bfac29363e611, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_StyleTrainerData:
+    rid: 8830055169252393570
+  m_DefaultStyleData:
+    rid: 8830055169252393571
+  m_DefaultStyleVersion: 2023111600
+  m_DefaultStyles:
+  - rid: 8830055169252393698
+  m_AssetPath: 
+  m_PreviousProjectIDs: []
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 8830055169252393570
+      type: {class: StyleTrainerData, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: b760e031-1133-47b3-8c0e-b64901f7958c
+        m_State: 1
+        m_Disposing: 0
+        m_Styles:
+        - rid: 8830055169252393700
+        m_Version: 202231001
+    - rid: 8830055169252393571
+      type: {class: StyleTrainerData, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 11000000-0000-0000-0000-000000000011
+        m_State: 1
+        m_Disposing: 0
+        m_Styles:
+        - rid: 8830055169252393699
+        m_Version: 202231001
+    - rid: 8830055169252393698
+      type: {class: StyleData, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 00000000-0000-0000-0000-000000000000
+        m_State: 1
+        m_Disposing: 0
+        m_IsFallback: 1
+        m_Thumbnail:
+          rid: -2
+        m_Visible: 0
+        selectedCheckPointGUID: 00000000-0000-0000-0000-000000000000
+        m_FavoriteCheckPointGUID: active
+        parentID: 00000000-0000-0000-0000-000000000000
+        m_ProjectID: 00000000-0000-0000-0000-000000000000
+        m_TrainingSteps: 2000
+        m_CheckPoints:
+        - m_Guid: 00000000-0000-0000-0000-000000000000
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: 00000000-0000-0000-0000-000000000000
+          m_Name: Default
+          m_Description: Default style.
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 
+            m_State: 0
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: 
+          m_ValidationImagesData: []
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 2000
+        m_SampleOutputPrompts: []
+        m_TrainingSetData: []
+        m_Name: Default
+        m_Description: Default style.
+    - rid: 8830055169252393699
+      type: {class: StyleData, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 5cc104e0-423a-473e-8034-b9d346cb2357
+        m_State: 1
+        m_Disposing: 0
+        m_IsFallback: 0
+        m_Thumbnail:
+          rid: -2
+        m_Visible: 1
+        selectedCheckPointGUID: 00000000-0000-0000-0000-000000000000
+        m_FavoriteCheckPointGUID: active
+        parentID: 00000000-0000-0000-0000-000000000000
+        m_ProjectID: 11000000-0000-0000-0000-000000000011
+        m_TrainingSteps: 2000
+        m_CheckPoints:
+        - m_Guid: 03fa404b-39fc-4979-9272-deb5d8c4b24c
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: 11000000-0000-0000-0000-000000000011
+          m_Name: 'Happy Harvest [Orion V4 2000]'
+          m_Description: 8 Nov 2023
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 3e758588-960f-44f5-865a-d5eaa1b1dec4
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: 11000000-0000-0000-0000-000000000011
+          m_ValidationImagesData:
+          - m_Guid: 00000000-0000-0000-0000-000000000000
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 00000000-0000-0000-0000-000000000000
+              m_State: 5
+              m_Disposing: 0
+            m_Prompt: A chicken
+          - m_Guid: 00000000-0000-0000-0000-000000000000
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 00000000-0000-0000-0000-000000000000
+              m_State: 5
+              m_Disposing: 0
+            m_Prompt: A cow
+          - m_Guid: 00000000-0000-0000-0000-000000000000
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 00000000-0000-0000-0000-000000000000
+              m_State: 5
+              m_Disposing: 0
+            m_Prompt: A dog
+          - m_Guid: 00000000-0000-0000-0000-000000000000
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 00000000-0000-0000-0000-000000000000
+              m_State: 5
+              m_Disposing: 0
+            m_Prompt: A farmer
+          - m_Guid: 00000000-0000-0000-0000-000000000000
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 00000000-0000-0000-0000-000000000000
+              m_State: 5
+              m_Disposing: 0
+            m_Prompt: A pine tree
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 1200
+        m_SampleOutputPrompts:
+        - A chicken
+        - A cow
+        - A dog
+        - A farmer
+        - A pine tree
+        m_TrainingSetData:
+        - m_Guid: 3e758588-960f-44f5-865a-d5eaa1b1dec4
+          m_State: 5
+          m_Disposing: 0
+          m_TrainingSet: []
+          m_ProjectID: 11000000-0000-0000-0000-000000000011
+        m_Name: Default
+        m_Description: Default Style
+    - rid: 8830055169252393700
+      type: {class: StyleData, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: ae44fb99-b447-47be-bebc-9ff245ced44c
+        m_State: 0
+        m_Disposing: 0
+        m_IsFallback: 0
+        m_Thumbnail:
+          rid: 8830055169252393701
+        m_Visible: 1
+        selectedCheckPointGUID: 5245947c-2b02-46fb-a57b-f86a04680663
+        m_FavoriteCheckPointGUID: active
+        parentID: 00000000-0000-0000-0000-000000000000
+        m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+        m_TrainingSteps: 2000
+        m_CheckPoints:
+        - m_Guid: b31d9c5b-52cd-47db-8853-43ac5df74c7c
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: c69e2e0e-be47-470c-b0c6-0bfad1b2ae66
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: c69e2e0e-be47-470c-b0c6-0bfad1b2ae66
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 2f5ef5ec-2f29-41fb-9964-ee42fe3d275c
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 2f5ef5ec-2f29-41fb-9964-ee42fe3d275c
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: 825e038c-0d90-46e6-8e9b-fa104fe5817e
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 825e038c-0d90-46e6-8e9b-fa104fe5817e
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 200
+        - m_Guid: 9b867251-fe8e-47f5-9b34-b4df4e12d3ec
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: e5781c7e-e1bf-4a8d-95c3-e6cefa5357f6
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: e5781c7e-e1bf-4a8d-95c3-e6cefa5357f6
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 67e4e738-990b-498e-9a4a-fcdc9e46120d
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 67e4e738-990b-498e-9a4a-fcdc9e46120d
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: c6748aca-00f8-4e38-8277-d2b67bd9469c
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: c6748aca-00f8-4e38-8277-d2b67bd9469c
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: e5781c7e-e1bf-4a8d-95c3-e6cefa5357f6
+          m_TrainingSteps: 400
+        - m_Guid: 9ac4b7c1-9acc-439a-814a-1184c08e627d
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: 8a71c5e4-2321-4b57-8233-e69153c25242
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 8a71c5e4-2321-4b57-8233-e69153c25242
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 85514e81-68b9-4d62-b5fb-657dc4312d31
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 85514e81-68b9-4d62-b5fb-657dc4312d31
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: 6f65213e-2e11-40a2-84b4-2785ec66b5e8
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 6f65213e-2e11-40a2-84b4-2785ec66b5e8
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 600
+        - m_Guid: 5ff19a96-636c-45ec-8e71-83348c38d4d7
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: 57c72f8b-6eff-4524-9fae-3bc182c7d8b9
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 57c72f8b-6eff-4524-9fae-3bc182c7d8b9
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 3d12e6a7-c0fb-4573-9752-77f96767a2ec
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 3d12e6a7-c0fb-4573-9752-77f96767a2ec
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: f76a2974-7e11-46b5-a50e-95f3a787a11e
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: f76a2974-7e11-46b5-a50e-95f3a787a11e
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 800
+        - m_Guid: b7c959ad-e0d8-4f87-a5ca-f587bb224f03
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: a4501d89-deb0-4cc5-a0ba-af247a03ce12
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: a4501d89-deb0-4cc5-a0ba-af247a03ce12
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: a1d45211-4cf1-4274-ac50-2a5c807f2890
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: a1d45211-4cf1-4274-ac50-2a5c807f2890
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: 8ef47bb9-3628-4474-95fb-aaacc71556cc
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 8ef47bb9-3628-4474-95fb-aaacc71556cc
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 1000
+        - m_Guid: 407820e2-3138-4f5e-a530-5eb0b27303fe
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: a523e22f-eb38-4603-9522-64e2b9eb7419
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: a523e22f-eb38-4603-9522-64e2b9eb7419
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 531cec10-3480-48f0-be54-d64e5515b6fd
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 531cec10-3480-48f0-be54-d64e5515b6fd
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: 733b9ab6-1f9b-413d-9ad4-6046a4d46731
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 733b9ab6-1f9b-413d-9ad4-6046a4d46731
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 1200
+        - m_Guid: 5b38eee6-01d2-4078-8939-b6bc50bf0fc7
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: f6dc099b-1be2-4d06-8e06-0742f6ce2e8e
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: f6dc099b-1be2-4d06-8e06-0742f6ce2e8e
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 6f678e23-23f6-471c-8777-e68025713aa1
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 6f678e23-23f6-471c-8777-e68025713aa1
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: c9e40a95-37b6-44e6-9884-2db03ec2e876
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: c9e40a95-37b6-44e6-9884-2db03ec2e876
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 1400
+        - m_Guid: ee84b0ce-2a22-4651-95c0-806ff7af4618
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: aba738cb-d3d3-4296-92c1-c3aa499be617
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: aba738cb-d3d3-4296-92c1-c3aa499be617
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 03d1494f-30bc-4d90-a01a-25586e92d626
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 03d1494f-30bc-4d90-a01a-25586e92d626
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: f7655c37-beee-4310-954b-2b7d70e40137
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: f7655c37-beee-4310-954b-2b7d70e40137
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 1600
+        - m_Guid: dd219604-a5b7-490a-878d-08910530ba3d
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: 28f3e599-3721-421f-9223-039cda633bf7
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 28f3e599-3721-421f-9223-039cda633bf7
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: 499ebace-5ddd-4a74-8bbb-538f4d5d7c8a
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 499ebace-5ddd-4a74-8bbb-538f4d5d7c8a
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: b6cf46c2-1279-469b-9ad9-59dbf74cf1d0
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: b6cf46c2-1279-469b-9ad9-59dbf74cf1d0
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 1800
+        - m_Guid: 5245947c-2b02-46fb-a57b-f86a04680663
+          m_State: 1
+          m_Disposing: 0
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_Name: Office
+          m_Description: office generator
+          parent_id: 00000000-0000-0000-0000-000000000000
+          m_TrainingSetData:
+            m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+            m_State: 5
+            m_Disposing: 0
+            m_TrainingSet: []
+            m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+          m_ValidationImagesData:
+          - m_Guid: 64c64428-c6c5-46c0-8d49-272b8498ef37
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 64c64428-c6c5-46c0-8d49-272b8498ef37
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with boxes
+          - m_Guid: dcdea0aa-6866-4182-9a2e-9473b815247b
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: dcdea0aa-6866-4182-9a2e-9473b815247b
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with desk
+          - m_Guid: 8dc5a80e-a907-47bf-b145-0634f5fb19a6
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              m_Guid: 8dc5a80e-a907-47bf-b145-0634f5fb19a6
+              m_State: 1
+              m_Disposing: 0
+            m_Prompt: office with chair
+          m_FavoriteSampleOutputDataGuid: 
+          m_TrainingSteps: 2000
+        m_SampleOutputPrompts:
+        - office with boxes
+        - office with desk
+        - office with chair
+        m_TrainingSetData:
+        - m_Guid: 43dd83ac-45bb-4bf5-9933-c7e3f1dc7ae7
+          m_State: 1
+          m_Disposing: 0
+          m_TrainingSet:
+          - m_Guid: 001f1891-5fb6-4277-9277-5cc786a14aea
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              rid: 8830055169252393739
+          - m_Guid: b1233ee3-2d03-4385-b351-55e3fef4ced4
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              rid: 8830055169252393740
+          - m_Guid: 6473455d-fc5e-4d0f-9f41-8e3df890219f
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              rid: 8830055169252393741
+          - m_Guid: 04d80d01-ffc0-440e-a1d8-c17be4957d74
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              rid: 8830055169252393742
+          - m_Guid: c99de5ad-b8ca-4302-ac0d-989e7162031a
+            m_State: 5
+            m_Disposing: 0
+            m_ImageArtifact:
+              rid: 8830055169252393743
+          m_ProjectID: b760e031-1133-47b3-8c0e-b64901f7958c
+        m_Name: Office
+        m_Description: office generator
+    - rid: 8830055169252393701
+      type: {class: ImageArtifact, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 00000000-0000-0000-0000-000000000000
+        m_State: 3
+        m_Disposing: 1
+    - rid: 8830055169252393739
+      type: {class: ImageArtifact, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 001f1891-5fb6-4277-9277-5cc786a14aea
+        m_State: 1
+        m_Disposing: 1
+    - rid: 8830055169252393740
+      type: {class: ImageArtifact, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: b1233ee3-2d03-4385-b351-55e3fef4ced4
+        m_State: 1
+        m_Disposing: 1
+    - rid: 8830055169252393741
+      type: {class: ImageArtifact, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 6473455d-fc5e-4d0f-9f41-8e3df890219f
+        m_State: 1
+        m_Disposing: 1
+    - rid: 8830055169252393742
+      type: {class: ImageArtifact, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: 04d80d01-ffc0-440e-a1d8-c17be4957d74
+        m_State: 1
+        m_Disposing: 1
+    - rid: 8830055169252393743
+      type: {class: ImageArtifact, ns: Unity.Muse.StyleTrainer, asm: Unity.Muse.StyleTrainer}
+      data:
+        m_Guid: c99de5ad-b8ca-4302-ac0d-989e7162031a
+        m_State: 1
+        m_Disposing: 1

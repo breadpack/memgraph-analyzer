@@ -1,0 +1,38 @@
+{
+    "IconSize": 126.5999984741211,
+    "MenuWidth": 100.0,
+    "PrefabLists": [
+        {
+            "Name": "버튼",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/Components/Buttons"
+        },
+        {
+            "Name": "텍스트",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/Components"
+        },
+        {
+            "Name": "토글",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/Components"
+        },
+        {
+            "Name": "아이템",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/ItemSlot"
+        },
+        {
+            "Name": "캐릭터",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/CharacterDetail"
+        },
+        {
+            "Name": "HUD",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/HUD"
+        },
+        {
+            "Name": "팀 강화",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/TeamProficiency"
+        },
+        {
+            "Name": "pop",
+            "PrefabPath": "Assets/_GAME_ASSETS/UI/Windows/Components/Popup"
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "com.tf.memgraph-analyzer",
+  "displayName": "MemGraph Analyzer",
+  "version": "1.0.0",
+  "unity": "6000.0",
+  "description": "macOS .memgraph file analyzer for Unity iOS memory profiling. Provides heap analysis, virtual memory mapping, leak detection, call tree tracing, and per-address allocation drill-down with IL2CPP demangling.",
+  "category": "Tools",
+  "keywords": [
+    "memory",
+    "profiling",
+    "memgraph",
+    "iOS",
+    "heap",
+    "vmmap",
+    "leaks",
+    "optimization"
+  ]
+}
