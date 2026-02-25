@@ -94,6 +94,7 @@ namespace Tools {
         public MemorySummary Summary = new();
         public readonly List<MemoryInsight> Insights = new();
         public List<CallTreeEntry> CallTree = new();
+        public OptimizationResult Optimizations;
     }
 
     public class FootprintResult {
@@ -203,17 +204,36 @@ namespace Tools {
         public string Address;
     }
 
+    public class AllocationContext {
+        public string ZoneName;
+        public string VmmapRegionType;
+        public string VmmapProtection;
+        public string VmmapShareMode;
+        public long VmmapRegionSize;
+        public string AllocatorType;
+    }
+
+    public class FallbackAnalysis {
+        public bool HasMallocHistory;
+        public string AnalysisMethod;
+        public readonly List<AllocationContext> Contexts = new();
+        public readonly List<CallTreeEntry> RelatedCallers = new();
+        public readonly List<string> Inferences = new();
+    }
+
     public class AddressTrace {
         public string Address;
         public long Size;
         public readonly List<StackFrame> Frames = new();
+        public AllocationContext Context;
     }
 
     public class AddressTraceResult {
         public readonly List<AddressTrace> Traces = new();
         public bool IsLoading;
-        public int LoadingStep; // 0=idle, 1=heap -addresses, 2=malloc_history
+        public int LoadingStep; // 0=idle, 1=heap -addresses, 2=malloc_history, 3=fallback
         public string ErrorMessage;
+        public FallbackAnalysis Fallback;
     }
 
     public class LeaksResult {

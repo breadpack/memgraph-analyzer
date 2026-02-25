@@ -23,6 +23,10 @@ namespace Tools {
             DrawTopIssues();
             GUILayout.Space(8);
 
+            // Optimization Guide
+            DrawOptimizationGuide();
+            GUILayout.Space(8);
+
             GUILayout.Label("Memory Overview", _headerStyle);
             GUILayout.Space(4);
 

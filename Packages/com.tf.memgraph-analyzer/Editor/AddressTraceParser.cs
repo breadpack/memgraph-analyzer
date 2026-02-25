@@ -132,5 +132,108 @@ namespace Tools {
                    upper.StartsWith("_MALLOC_ZONE") ||
                    upper.StartsWith("DEFAULT_ZONE");
         }
+
+        public static AllocationContext FindContainingRegion(
+            string address, List<VmmapRegion> regions) {
+            if (string.IsNullOrEmpty(address) || regions == null || regions.Count == 0)
+                return null;
+
+            // Parse the address
+            if (!address.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (!ulong.TryParse(address.Substring(2), NumberStyles.HexNumber,
+                    CultureInfo.InvariantCulture, out ulong addrValue))
+                return null;
+
+            foreach (var region in regions) {
+                if (string.IsNullOrEmpty(region.AddressStart) || string.IsNullOrEmpty(region.AddressEnd))
+                    continue;
+
+                if (!ulong.TryParse(region.AddressStart, NumberStyles.HexNumber,
+                        CultureInfo.InvariantCulture, out ulong start))
+                    continue;
+                if (!ulong.TryParse(region.AddressEnd, NumberStyles.HexNumber,
+                        CultureInfo.InvariantCulture, out ulong end))
+                    continue;
+
+                if (addrValue >= start && addrValue < end) {
+                    string allocType = InferAllocatorType(region.RegionType);
+                    return new AllocationContext {
+                        VmmapRegionType = region.RegionType,
+                        VmmapProtection = region.Protection,
+                        VmmapShareMode = region.ShareMode,
+                        VmmapRegionSize = region.Size,
+                        AllocatorType = allocType,
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        public static List<string> InferAllocationOrigin(
+            string className, string binary, long avgSize, VmmapResult vmmap) {
+            var inferences = new List<string>();
+            if (string.IsNullOrEmpty(className) && string.IsNullOrEmpty(binary))
+                return inferences;
+
+            var upper = (className ?? "").ToUpperInvariant();
+            var binaryUpper = (binary ?? "").ToUpperInvariant();
+
+            // Binary inference
+            if (binaryUpper.Contains("UNITYFRAMEWORK") || binaryUpper.Contains("UNITY"))
+                inferences.Add($"Binary '{binary}' - Unity engine internal allocation");
+            else if (!string.IsNullOrEmpty(binary) && !binaryUpper.Contains("LIBSYSTEM"))
+                inferences.Add($"Binary '{binary}' - likely native plugin or app code");
+
+            // IL2CPP demangling
+            string demangled = CallTreeParser.FormatFunctionName(className ?? "");
+            if (demangled != className && !string.IsNullOrEmpty(demangled))
+                inferences.Add($"IL2CPP demangling: {demangled}");
+
+            // Size-based allocator inference
+            if (avgSize > 0) {
+                if (avgSize <= 256)
+                    inferences.Add("MALLOC_TINY region - allocations <= 256 bytes (nano/tiny allocator)");
+                else if (avgSize <= 16 * 1024)
+                    inferences.Add("MALLOC_SMALL region - allocations 257B ~ 16KB range");
+                else if (avgSize <= 1024 * 1024)
+                    inferences.Add("MALLOC_LARGE region - allocations 16KB ~ 1MB range");
+                else
+                    inferences.Add($"Large allocation ({VmmapParser.FormatSize(avgSize)}) - likely vm_allocate or mmap backed");
+            }
+
+            // Class name pattern inference
+            if (upper.Contains("TEXTURE") || upper.Contains("RENDERTEXTURE"))
+                inferences.Add("Texture data - check compression format and resolution in Import Settings");
+            else if (upper.Contains("MESH") || upper.Contains("VERTEX"))
+                inferences.Add("Mesh data - check mesh compression and unused vertex attributes");
+            else if (upper.Contains("AUDIOCLIP") || upper.Contains("FMOD"))
+                inferences.Add("Audio data - check streaming settings and compression format");
+            else if (upper.Contains("SHADER") || upper.Contains("MATERIAL"))
+                inferences.Add("Shader/Material - check for excessive shader variants");
+            else if (upper.Contains("FONT") || upper.Contains("TMP"))
+                inferences.Add("Font data - check atlas size and included character ranges");
+            else if (upper.Contains("ANIMATION"))
+                inferences.Add("Animation data - check animation compression settings");
+
+            return inferences;
+        }
+
+        public static string BuildHeapZonesCommand(string memGraphPath) {
+            string path = EscapeForShell(memGraphPath);
+            return $"-c \"heap --zones {path} 2>/dev/null | head -200\"";
+        }
+
+        private static string InferAllocatorType(string regionType) {
+            if (string.IsNullOrEmpty(regionType)) return null;
+            var upper = regionType.ToUpperInvariant();
+            if (upper.Contains("TINY") || upper.Contains("NANO")) return "tiny";
+            if (upper.Contains("SMALL")) return "small";
+            if (upper.Contains("LARGE")) return "large";
+            if (upper.Contains("MALLOC")) return "malloc";
+            return null;
+        }
     }
 }

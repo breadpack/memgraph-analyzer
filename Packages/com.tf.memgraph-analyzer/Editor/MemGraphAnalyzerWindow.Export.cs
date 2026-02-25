@@ -125,6 +125,23 @@ namespace Tools {
                 }
                 sb.AppendLine();
 
+                // Optimization Recommendations
+                if (_report.Optimizations != null && _report.Optimizations.Recommendations.Count > 0) {
+                    sb.AppendLine("--- Optimization Recommendations ---");
+                    sb.AppendLine($"Total recommendations: {_report.Optimizations.Recommendations.Count}");
+                    sb.AppendLine($"Estimated total savings: {VmmapParser.FormatSize(_report.Optimizations.TotalEstimatedSavings)}");
+                    sb.AppendLine();
+                    foreach (var rec in _report.Optimizations.Recommendations) {
+                        sb.AppendLine($"[{rec.Difficulty}] [{rec.Category}] {rec.Title}");
+                        sb.AppendLine($"  {rec.Description}");
+                        sb.AppendLine($"  Estimated savings: ~{VmmapParser.FormatSize(rec.EstimatedSavings)}");
+                        foreach (var step in rec.ActionSteps) {
+                            sb.AppendLine($"    * {step}");
+                        }
+                        sb.AppendLine();
+                    }
+                }
+
                 // Top heap allocations
                 sb.AppendLine("--- Top 50 Heap Allocations ---");
                 sb.AppendLine($"{"Count",8} {"Bytes",12} {"Avg",10} {"Owner",-16} Class Name");
