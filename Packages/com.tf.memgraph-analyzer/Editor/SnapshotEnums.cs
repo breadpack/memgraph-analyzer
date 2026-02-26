@@ -6,6 +6,8 @@ namespace Tools {
         CrawlingHeap,
         BuildingAssemblyTree,
         CalculatingRetained,
+        LinkingNativeManaged,
+        GeneratingInsights,
         Complete,
         Error,
     }

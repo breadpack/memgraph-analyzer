@@ -99,6 +99,44 @@ namespace Tools {
                     }
                 }
 
+                // Native-Managed Link Summary
+                if (_report.LinkResult != null) {
+                    sb.AppendLine();
+                    sb.AppendLine("--- Native-Managed Link Summary ---");
+                    sb.AppendLine($"Linked:     {_report.LinkResult.LinkedCount:N0}");
+                    sb.AppendLine($"Unlinked:   {_report.LinkResult.UnlinkedNativeCount:N0}");
+                    sb.AppendLine($"Total Links: {_report.LinkResult.Links.Count:N0}");
+                }
+
+                // Insights
+                if (_report.InsightResult != null && _report.InsightResult.Insights.Count > 0) {
+                    sb.AppendLine();
+                    sb.AppendLine("--- Insights ---");
+                    sb.AppendLine($"Total Estimated Savings: {VmmapParser.FormatSize(_report.InsightResult.TotalEstimatedSavings)}");
+                    sb.AppendLine();
+                    foreach (var insight in _report.InsightResult.Insights) {
+                        string sev = insight.Severity.ToString().ToUpper();
+                        sb.AppendLine($"  [{sev}] {insight.Title}");
+                        sb.AppendLine($"    {insight.Description}");
+                        sb.AppendLine($"    >> {insight.Recommendation}");
+                        if (insight.EstimatedSavings > 0)
+                            sb.AppendLine($"    Estimated savings: {VmmapParser.FormatSize(insight.EstimatedSavings)}");
+                        sb.AppendLine();
+                    }
+
+                    // Duplicate Assets
+                    if (_report.InsightResult.DuplicateAssets.Count > 0) {
+                        sb.AppendLine("--- Duplicate Assets ---");
+                        sb.AppendLine($"{"Name",-30} {"Type",-20} {"Count",6} {"Each",12} {"Wasted",12}");
+                        foreach (var dup in _report.InsightResult.DuplicateAssets.Take(20)) {
+                            sb.AppendLine($"  {dup.Name,-28} {dup.NativeTypeName,-20} {dup.Count,6} " +
+                                         $"{VmmapParser.FormatSize(dup.IndividualSize),12} " +
+                                         $"{VmmapParser.FormatSize(dup.TotalWastedSize),12}");
+                        }
+                        sb.AppendLine();
+                    }
+                }
+
                 File.WriteAllText(path, sb.ToString());
                 Debug.Log($"[SnapshotAnalyzer] Report exported to: {path}");
                 EditorUtility.RevealInFinder(path);
@@ -166,6 +204,21 @@ namespace Tools {
             sb.AppendLine("Top Native Types:");
             foreach (var summary in _report.NativeTypeSummaries.Take(5)) {
                 sb.AppendLine($"  {summary.TypeName}: {VmmapParser.FormatSize(summary.TotalSize)} ({summary.ObjectCount})");
+            }
+
+            // Top insights
+            if (_report.InsightResult != null && _report.InsightResult.Insights.Count > 0) {
+                sb.AppendLine("Top Issues:");
+                foreach (var insight in _report.InsightResult.Insights.Take(3)) {
+                    string sev = insight.Severity.ToString().ToUpper();
+                    sb.AppendLine($"  [{sev}] {insight.Title} (~{VmmapParser.FormatSize(insight.EstimatedSavings)})");
+                }
+            }
+
+            // Link summary
+            if (_report.LinkResult != null) {
+                sb.AppendLine($"Native-Managed Links: {_report.LinkResult.LinkedCount:N0} linked, " +
+                             $"{_report.LinkResult.UnlinkedNativeCount:N0} unlinked");
             }
 
             GUIUtility.systemCopyBuffer = sb.ToString();

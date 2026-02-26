@@ -161,6 +161,7 @@ namespace Tools {
                     Category = CategorizeNativeType(nativeTypeName),
                     GcHandleIndex = gcHandleIndices[i],
                     NativeTypeArrayIndex = nativeTypeIdx,
+                    NativeObjectListIndex = i,
                 };
                 objects.Add(obj);
                 totalNativeSize += sizes[i];

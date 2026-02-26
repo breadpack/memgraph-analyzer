@@ -21,6 +21,10 @@ namespace Tools {
             GUILayout.Space(8);
             DrawClassificationBarChart();
             GUILayout.Space(8);
+            DrawTopIssuesPreview();
+            GUILayout.Space(8);
+            DrawNativeMemoryAttribution();
+            GUILayout.Space(8);
             DrawTopNativeTypes();
             GUILayout.Space(8);
             DrawTopManagedTypes();
@@ -208,6 +212,91 @@ namespace Tools {
                     GUILayout.Label(VmmapParser.FormatSize(t.BaseSize), GUILayout.Width(90));
                 }
 
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawTopIssuesPreview() {
+            if (_report.InsightResult == null || _report.InsightResult.Insights.Count == 0) return;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUILayout.Label("Top Issues", EditorStyles.boldLabel);
+
+            int shown = System.Math.Min(_report.InsightResult.Insights.Count, 5);
+            for (int i = 0; i < shown; i++) {
+                var insight = _report.InsightResult.Insights[i];
+                var color = GetSnapshotSeverityColor(insight.Severity);
+                string icon = GetSnapshotSeverityIcon(insight.Severity);
+
+                EditorGUILayout.BeginHorizontal();
+                var prevColor = GUI.contentColor;
+                GUI.contentColor = color;
+                GUILayout.Label($"{icon} {insight.Title}", EditorStyles.boldLabel);
+                GUI.contentColor = prevColor;
+
+                if (insight.EstimatedSavings > 0) {
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label($"~{VmmapParser.FormatSize(insight.EstimatedSavings)}", _warningStyle, GUILayout.Width(100));
+                }
+                EditorGUILayout.EndHorizontal();
+
+                GUILayout.Label(insight.Description, EditorStyles.wordWrappedLabel);
+                GUILayout.Space(2);
+            }
+
+            if (_report.InsightResult.Insights.Count > 5) {
+                if (GUILayout.Button($"View all {_report.InsightResult.Insights.Count} issues in Insights tab >>",
+                    EditorStyles.linkLabel)) {
+                    _selectedTab = 4; // Insights tab
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawNativeMemoryAttribution() {
+            if (_report.LinkResult == null || _report.CrawlerResult == null) return;
+            if (_report.LinkResult.NativeRetainedByManaged.Count == 0) return;
+
+            // Aggregate by managed type
+            var typeNativeSize = new Dictionary<string, long>();
+            foreach (var kv in _report.LinkResult.NativeRetainedByManaged) {
+                int managedIdx = kv.Key;
+                if (managedIdx < 0 || managedIdx >= _report.CrawlerResult.Objects.Count) continue;
+
+                var obj = _report.CrawlerResult.Objects[managedIdx];
+                string typeName = "Unknown";
+                if (obj.TypeIndex >= 0 && obj.TypeIndex < _report.Types.Length)
+                    typeName = _report.Types[obj.TypeIndex].Name;
+
+                if (!typeNativeSize.ContainsKey(typeName))
+                    typeNativeSize[typeName] = 0;
+                typeNativeSize[typeName] += kv.Value;
+            }
+
+            if (typeNativeSize.Count == 0) return;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUILayout.Label("Native Memory Attribution by Managed Type (Top 10)", EditorStyles.boldLabel);
+
+            var sorted = typeNativeSize.OrderByDescending(kv => kv.Value).Take(10).ToList();
+            long maxSize = sorted.Count > 0 ? sorted[0].Value : 1;
+
+            foreach (var kv in sorted) {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label(kv.Key, GUILayout.Width(180));
+
+                var barRect = EditorGUILayout.GetControlRect(false, 16, GUILayout.MinWidth(100));
+                if (Event.current.type == EventType.Repaint) {
+                    EditorGUI.DrawRect(barRect, BarBgColor);
+                    float ratio = maxSize > 0 ? (float)kv.Value / maxSize : 0;
+                    var fillRect = new Rect(barRect.x, barRect.y, barRect.width * ratio, barRect.height);
+                    EditorGUI.DrawRect(fillRect, BarFillColor);
+                }
+
+                GUILayout.Label(VmmapParser.FormatSize(kv.Value), GUILayout.Width(80));
                 EditorGUILayout.EndHorizontal();
             }
 

@@ -36,6 +36,10 @@ namespace Tools {
         // Retained sizes (populated in Sprint 4)
         public Dictionary<int, long> RetainedSizes;
 
+        // Native↔Managed link and insight results
+        public NativeManagedLinkResult LinkResult;
+        public SnapshotInsightResult InsightResult;
+
         public bool SkipCrawl;
     }
 
@@ -91,6 +95,7 @@ namespace Tools {
         public NativeTypeCategory Category;
         public int GcHandleIndex;
         public int NativeTypeArrayIndex;
+        public int NativeObjectListIndex;
     }
 
     public class NativeTypeSummary {

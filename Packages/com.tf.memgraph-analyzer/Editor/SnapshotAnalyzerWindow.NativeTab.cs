@@ -197,6 +197,9 @@ namespace Tools {
                 EditorGUILayout.EndHorizontal();
             }
 
+            // Managed Owner display
+            DrawNativeManagedOwner(obj);
+
             EditorGUILayout.EndVertical();
             GUILayout.Space(2);
         }
@@ -248,6 +251,89 @@ namespace Tools {
                     _nativeSortAscending = false;
                 }
             }
+        }
+
+        private void DrawNativeManagedOwner(NativeObjectInfo obj) {
+            if (_report.LinkResult == null) return;
+            int nativeIdx = obj.NativeObjectListIndex;
+
+            if (!_report.LinkResult.NativeToManaged.TryGetValue(nativeIdx, out int managedIdx)) return;
+            if (_report.CrawlerResult == null || managedIdx < 0 || managedIdx >= _report.CrawlerResult.Objects.Count) return;
+
+            var managedObj = _report.CrawlerResult.Objects[managedIdx];
+            string typeName = "Unknown";
+            if (managedObj.TypeIndex >= 0 && managedObj.TypeIndex < _report.Types.Length)
+                typeName = _report.Types[managedObj.TypeIndex].Name;
+
+            GUILayout.Space(4);
+            GUILayout.Label("Managed Owner", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Type:", GUILayout.Width(100));
+            GUILayout.Label(typeName, _successStyle);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Managed Size:", GUILayout.Width(100));
+            GUILayout.Label(VmmapParser.FormatSize(managedObj.Size));
+            EditorGUILayout.EndHorizontal();
+
+            if (managedObj.IsGcRoot) {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label("GC Root:", GUILayout.Width(100));
+                GUILayout.Label("Yes", _warningStyle);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            // Show reference chain if available
+            DrawOwnerReferenceChain(managedIdx);
+        }
+
+        private void DrawOwnerReferenceChain(int managedIdx) {
+            if (_report.CrawlerResult == null) return;
+
+            // Build incoming reference chain up to GC root (max depth 10)
+            var chain = new System.Collections.Generic.List<string>();
+            var visited = new System.Collections.Generic.HashSet<int>();
+            int current = managedIdx;
+
+            for (int depth = 0; depth < 10; depth++) {
+                if (visited.Contains(current)) break;
+                visited.Add(current);
+
+                if (current < 0 || current >= _report.CrawlerResult.Objects.Count) break;
+                var obj = _report.CrawlerResult.Objects[current];
+
+                string typeName = "?";
+                if (obj.TypeIndex >= 0 && obj.TypeIndex < _report.Types.Length)
+                    typeName = _report.Types[obj.TypeIndex].Name;
+
+                if (obj.IsGcRoot) {
+                    chain.Add($"[Root] {typeName}");
+                    break;
+                }
+
+                chain.Add(typeName);
+
+                // Find first incoming reference
+                bool found = false;
+                foreach (var edge in _report.CrawlerResult.References) {
+                    if (edge.ToObjectIndex == current) {
+                        chain[chain.Count - 1] = $"{typeName} (via .{edge.FieldName})";
+                        current = edge.FromObjectIndex;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) break;
+            }
+
+            if (chain.Count <= 1) return;
+
+            GUILayout.Space(2);
+            GUILayout.Label("Owner Chain:", _mutedStyle);
+            chain.Reverse();
+            GUILayout.Label("  " + string.Join(" -> ", chain), _mutedStyle);
         }
     }
 }

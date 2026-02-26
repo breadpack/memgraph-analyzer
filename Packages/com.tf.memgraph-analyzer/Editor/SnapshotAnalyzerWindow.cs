@@ -22,7 +22,7 @@ namespace Tools {
         private GUIStyle _mutedStyle;
 
         private static readonly string[] TabLabels = {
-            "Summary", "Assemblies", "Native Objects", "References"
+            "Summary", "Assemblies", "Native Objects", "References", "Insights"
         };
 
         // Colors for assembly classifications
@@ -68,6 +68,7 @@ namespace Tools {
                     case 1: DrawAssemblyTab(); break;
                     case 2: DrawNativeTab(); break;
                     case 3: DrawReferencesTab(); break;
+                    case 4: DrawInsightsTab(); break;
                 }
             } else if (_report != null && _report.Phase == SnapshotAnalysisPhase.Error) {
                 EditorGUILayout.HelpBox($"Analysis failed: {_report.ErrorMessage}", MessageType.Error);
@@ -129,10 +130,12 @@ namespace Tools {
 
             float progress = phase switch {
                 SnapshotAnalysisPhase.Loading => 0.1f,
-                SnapshotAnalysisPhase.ExtractingTypes => 0.3f,
-                SnapshotAnalysisPhase.CrawlingHeap => 0.5f,
-                SnapshotAnalysisPhase.BuildingAssemblyTree => 0.75f,
-                SnapshotAnalysisPhase.CalculatingRetained => 0.9f,
+                SnapshotAnalysisPhase.ExtractingTypes => 0.25f,
+                SnapshotAnalysisPhase.CrawlingHeap => 0.4f,
+                SnapshotAnalysisPhase.BuildingAssemblyTree => 0.6f,
+                SnapshotAnalysisPhase.CalculatingRetained => 0.75f,
+                SnapshotAnalysisPhase.LinkingNativeManaged => 0.85f,
+                SnapshotAnalysisPhase.GeneratingInsights => 0.93f,
                 _ => 0f,
             };
             string label = phase switch {
@@ -141,6 +144,8 @@ namespace Tools {
                 SnapshotAnalysisPhase.CrawlingHeap => "Crawling managed heap...",
                 SnapshotAnalysisPhase.BuildingAssemblyTree => "Building assembly tree...",
                 SnapshotAnalysisPhase.CalculatingRetained => "Calculating retained sizes...",
+                SnapshotAnalysisPhase.LinkingNativeManaged => "Linking native and managed objects...",
+                SnapshotAnalysisPhase.GeneratingInsights => "Generating insights...",
                 _ => "Processing...",
             };
             EditorGUI.ProgressBar(EditorGUILayout.GetControlRect(false, 20), progress, label);
@@ -169,6 +174,8 @@ namespace Tools {
             _refSearchText = "";
             _refSearchResults = null;
             _selectedRefObject = -1;
+            _insightCategoryFilter = 0;
+            _insightScrollPos = Vector2.zero;
         }
 
         private bool ValidateSnapFile() {
@@ -225,8 +232,9 @@ namespace Tools {
                 }
 
                 if (_report.SkipCrawl) {
-                    _report.Phase = SnapshotAnalysisPhase.Complete;
+                    _report.Phase = SnapshotAnalysisPhase.LinkingNativeManaged;
                     Repaint();
+                    EditorApplication.delayCall += RunLinkNativeManaged;
                     return;
                 }
 
@@ -258,8 +266,9 @@ namespace Tools {
             }
             catch (Exception ex) {
                 Debug.LogWarning($"[SnapshotAnalyzer] Heap crawling failed: {ex.Message}. Continuing without instance data.");
-                _report.Phase = SnapshotAnalysisPhase.Complete;
+                _report.Phase = SnapshotAnalysisPhase.LinkingNativeManaged;
                 Repaint();
+                EditorApplication.delayCall += RunLinkNativeManaged;
             }
         }
 
@@ -268,15 +277,41 @@ namespace Tools {
                 if (_report.CrawlerResult != null) {
                     _report.RetainedSizes = RetainedSizeCalculator.Calculate(_report.CrawlerResult);
                 }
-
-                _report.Phase = SnapshotAnalysisPhase.Complete;
-                Repaint();
             }
             catch (Exception ex) {
                 Debug.LogWarning($"[SnapshotAnalyzer] Retained size calculation failed: {ex.Message}. Continuing without retained sizes.");
-                _report.Phase = SnapshotAnalysisPhase.Complete;
-                Repaint();
             }
+
+            _report.Phase = SnapshotAnalysisPhase.LinkingNativeManaged;
+            Repaint();
+            EditorApplication.delayCall += RunLinkNativeManaged;
+        }
+
+        private void RunLinkNativeManaged() {
+            try {
+                _report.LinkResult = _report.CrawlerResult != null
+                    ? NativeManagedLinker.Link(_report)
+                    : NativeManagedLinker.LinkQuick(_report);
+            }
+            catch (Exception ex) {
+                Debug.LogWarning($"[SnapshotAnalyzer] Native-managed linking failed: {ex.Message}. Continuing without link data.");
+            }
+
+            _report.Phase = SnapshotAnalysisPhase.GeneratingInsights;
+            Repaint();
+            EditorApplication.delayCall += RunGenerateInsights;
+        }
+
+        private void RunGenerateInsights() {
+            try {
+                _report.InsightResult = SnapshotInsightGenerator.Analyze(_report, _report.LinkResult);
+            }
+            catch (Exception ex) {
+                Debug.LogWarning($"[SnapshotAnalyzer] Insight generation failed: {ex.Message}. Continuing without insights.");
+            }
+
+            _report.Phase = SnapshotAnalysisPhase.Complete;
+            Repaint();
         }
 
         private void OnPipelineError(string message) {
