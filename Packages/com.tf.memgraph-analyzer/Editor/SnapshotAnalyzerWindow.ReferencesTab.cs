@@ -15,6 +15,7 @@ namespace Tools {
         private List<ReferenceEdge> _currentOutgoing;
 
         private void DrawReferencesTab() {
+            AnalyzerGuidance.DrawTabHeader("Search managed objects by type name. View reference chains and retained sizes. Requires full analysis.");
             if (_report.CrawlerResult == null) {
                 EditorGUILayout.HelpBox(
                     "Heap crawling was skipped or not completed. " +

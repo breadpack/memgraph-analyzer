@@ -23,8 +23,13 @@ namespace Tools {
         private GUIStyle _mutedStyle;
         private GUIStyle _healthBadgeStyle;
 
-        private static readonly string[] TabLabels = {
-            "Summary", "Virtual Memory", "Heap Analysis", "Leak Detection", "Unity-Specific", "Comparison"
+        private static readonly GUIContent[] TabLabels = {
+            new("Summary", "Health status, iOS device comparison, memory overview, optimization guide"),
+            new("Virtual Memory", "vmmap region breakdown with fragmentation analysis"),
+            new("Heap Analysis", "Heap allocations by class with size distribution and call stacks"),
+            new("Leak Detection", "Leaked memory objects with stack traces and remediation guidance"),
+            new("Unity-Specific", "Tracked vs untracked, plugin memory, GPU, thread stacks"),
+            new("Comparison", "Side-by-side diff of two .memgraph files"),
         };
 
         // Comparison state
@@ -118,6 +123,8 @@ namespace Tools {
                     if (_selectedTab == 5) {
                         GUILayout.Space(4);
                         DrawComparisonTab();
+                    } else {
+                        AnalyzerGuidance.DrawMemGraphEmptyState();
                     }
                 }
             }
@@ -130,7 +137,7 @@ namespace Tools {
             var displayPath = string.IsNullOrEmpty(_memGraphPath) ? "(none)" : Path.GetFileName(_memGraphPath);
             GUILayout.Label(displayPath, EditorStyles.toolbarButton, GUILayout.MinWidth(100));
 
-            if (GUILayout.Button("Browse...", EditorStyles.toolbarButton, GUILayout.Width(70))) {
+            if (GUILayout.Button(AnalyzerGuidance.MemGraphBrowse, EditorStyles.toolbarButton, GUILayout.Width(70))) {
                 var path = EditorUtility.OpenFilePanel("Select .memgraph file", "", "memgraph");
                 if (!string.IsNullOrEmpty(path)) {
                     _memGraphPath = path;
@@ -141,13 +148,13 @@ namespace Tools {
                             _report.Phase != AnalysisPhase.Complete && _report.Phase != AnalysisPhase.Error;
 
             GUI.enabled = !string.IsNullOrEmpty(_memGraphPath) && !isRunning;
-            if (GUILayout.Button("Analyze", EditorStyles.toolbarButton, GUILayout.Width(60))) {
+            if (GUILayout.Button(AnalyzerGuidance.MemGraphAnalyze, EditorStyles.toolbarButton, GUILayout.Width(60))) {
                 StartAnalysis();
             }
             GUI.enabled = true;
 
             if (isRunning) {
-                if (GUILayout.Button("Cancel", EditorStyles.toolbarButton, GUILayout.Width(55))) {
+                if (GUILayout.Button(AnalyzerGuidance.MemGraphCancel, EditorStyles.toolbarButton, GUILayout.Width(55))) {
                     MemGraphCommandRunner.Cancel();
                     if (_report != null) {
                         _report.Phase = AnalysisPhase.Error;
@@ -162,8 +169,14 @@ namespace Tools {
                 DrawExportButtons();
             }
 
-            if (GUILayout.Button("Snapshot", EditorStyles.toolbarButton, GUILayout.Width(65))) {
+            if (GUILayout.Button(AnalyzerGuidance.MemGraphSnapshot, EditorStyles.toolbarButton, GUILayout.Width(65))) {
                 SnapshotAnalyzerWindow.ShowWindow();
+            }
+
+            if (!AnalyzerGuidance.ShowTabHeaders) {
+                if (GUILayout.Button(AnalyzerGuidance.ShowHeadersButton, EditorStyles.toolbarButton, GUILayout.Width(22))) {
+                    AnalyzerGuidance.ShowTabHeaders = true;
+                }
             }
 
             EditorGUILayout.EndHorizontal();

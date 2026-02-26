@@ -9,6 +9,7 @@ namespace Tools {
         private Vector2 _summaryScrollPos;
 
         private void DrawSummaryTab() {
+            AnalyzerGuidance.DrawTabHeader("Overview of snapshot metadata, memory totals, classification breakdown, top types, and detected issues.");
             _summaryScrollPos = EditorGUILayout.BeginScrollView(_summaryScrollPos);
 
             DrawSnapshotFileInfo();

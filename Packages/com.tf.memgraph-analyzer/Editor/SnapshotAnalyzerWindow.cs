@@ -21,8 +21,12 @@ namespace Tools {
         private GUIStyle _warningStyle;
         private GUIStyle _mutedStyle;
 
-        private static readonly string[] TabLabels = {
-            "Summary", "Assemblies", "Native Objects", "References", "Insights"
+        private static readonly GUIContent[] TabLabels = {
+            new("Summary", "Memory totals, classification breakdown, top types, and detected issues"),
+            new("Assemblies", "Browse assemblies by classification, namespace, and type"),
+            new("Native Objects", "Native Unity objects (textures, meshes, etc.) sorted by size"),
+            new("References", "Search managed objects and trace reference chains to GC roots"),
+            new("Insights", "Duplicate assets, unreferenced objects, and optimization hints"),
         };
 
         // Colors for assembly classifications
@@ -72,6 +76,8 @@ namespace Tools {
                 }
             } else if (_report != null && _report.Phase == SnapshotAnalysisPhase.Error) {
                 EditorGUILayout.HelpBox($"Analysis failed: {_report.ErrorMessage}", MessageType.Error);
+            } else if (_report == null || _report.Phase == SnapshotAnalysisPhase.Idle) {
+                AnalyzerGuidance.DrawSnapshotEmptyState();
             }
         }
 
@@ -82,7 +88,7 @@ namespace Tools {
             var displayPath = string.IsNullOrEmpty(_snapPath) ? "(none)" : Path.GetFileName(_snapPath);
             GUILayout.Label(displayPath, EditorStyles.toolbarButton, GUILayout.MinWidth(100));
 
-            if (GUILayout.Button("Browse...", EditorStyles.toolbarButton, GUILayout.Width(70))) {
+            if (GUILayout.Button(AnalyzerGuidance.SnapshotBrowse, EditorStyles.toolbarButton, GUILayout.Width(70))) {
                 var path = EditorUtility.OpenFilePanel("Select .snap file", "", "snap");
                 if (!string.IsNullOrEmpty(path)) {
                     _snapPath = path;
@@ -95,16 +101,16 @@ namespace Tools {
                              _report.Phase != SnapshotAnalysisPhase.Error;
 
             GUI.enabled = !string.IsNullOrEmpty(_snapPath) && !isRunning;
-            if (GUILayout.Button("Analyze", EditorStyles.toolbarButton, GUILayout.Width(60))) {
+            if (GUILayout.Button(AnalyzerGuidance.SnapshotAnalyze, EditorStyles.toolbarButton, GUILayout.Width(60))) {
                 StartAnalysis(false);
             }
-            if (GUILayout.Button("Quick", EditorStyles.toolbarButton, GUILayout.Width(45))) {
+            if (GUILayout.Button(AnalyzerGuidance.SnapshotQuick, EditorStyles.toolbarButton, GUILayout.Width(45))) {
                 StartAnalysis(true);
             }
             GUI.enabled = true;
 
             if (isRunning) {
-                if (GUILayout.Button("Cancel", EditorStyles.toolbarButton, GUILayout.Width(55))) {
+                if (GUILayout.Button(AnalyzerGuidance.SnapshotCancel, EditorStyles.toolbarButton, GUILayout.Width(55))) {
                     if (_report != null) {
                         _report.Phase = SnapshotAnalysisPhase.Error;
                         _report.ErrorMessage = "Cancelled by user";
@@ -116,6 +122,12 @@ namespace Tools {
 
             if (_report != null && _report.Phase == SnapshotAnalysisPhase.Complete) {
                 DrawSnapshotExportButtons();
+            }
+
+            if (!AnalyzerGuidance.ShowTabHeaders) {
+                if (GUILayout.Button(AnalyzerGuidance.ShowHeadersButton, EditorStyles.toolbarButton, GUILayout.Width(22))) {
+                    AnalyzerGuidance.ShowTabHeaders = true;
+                }
             }
 
             EditorGUILayout.EndHorizontal();

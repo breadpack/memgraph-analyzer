@@ -22,6 +22,7 @@ namespace Tools {
         private static readonly Color DiffRemovedColor = new(0.6f, 0.6f, 0.6f, 1f);
 
         private void DrawComparisonTab() {
+            AnalyzerGuidance.DrawTabHeader("Compare two .memgraph files side-by-side. Shows deltas for footprint, heap, vmmap, owners, and leaks.");
             // File selection toolbar
             DrawComparisonToolbar();
 

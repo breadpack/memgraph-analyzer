@@ -12,6 +12,7 @@ namespace Tools {
         private List<LeakGroup> _cachedLeakGroups;
 
         private void DrawLeaksTab() {
+            AnalyzerGuidance.DrawTabHeader("Results from the leaks command. Group by type or browse individually with stack traces.");
             if (_report.Leaks.TotalLeakCount == 0 && _report.Leaks.Leaks.Count == 0) {
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 GUILayout.Label("No memory leaks detected.", _successStyle);

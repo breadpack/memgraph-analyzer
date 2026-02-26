@@ -8,13 +8,13 @@ using UnityEngine;
 namespace Tools {
     public partial class MemGraphAnalyzerWindow {
         private void DrawExportButtons() {
-            if (GUILayout.Button("Export Text", EditorStyles.toolbarButton, GUILayout.Width(75))) {
+            if (GUILayout.Button(AnalyzerGuidance.ExportText, EditorStyles.toolbarButton, GUILayout.Width(75))) {
                 ExportTextReport();
             }
-            if (GUILayout.Button("Export CSV", EditorStyles.toolbarButton, GUILayout.Width(70))) {
+            if (GUILayout.Button(AnalyzerGuidance.ExportCsv, EditorStyles.toolbarButton, GUILayout.Width(70))) {
                 ExportHeapCsv();
             }
-            if (GUILayout.Button("Copy Summary", EditorStyles.toolbarButton, GUILayout.Width(90))) {
+            if (GUILayout.Button(AnalyzerGuidance.CopySummary, EditorStyles.toolbarButton, GUILayout.Width(90))) {
                 CopySummaryToClipboard();
             }
         }

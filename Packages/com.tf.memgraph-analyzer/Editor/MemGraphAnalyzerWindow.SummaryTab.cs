@@ -9,6 +9,7 @@ namespace Tools {
         private int _selectedDeviceIndex = iOSDeviceProfiles.DefaultIndex;
 
         private void DrawSummaryTab() {
+            AnalyzerGuidance.DrawTabHeader("Memory health, iOS device comparison, key metrics, category breakdown, and optimization guide.");
             _summaryScrollPos = EditorGUILayout.BeginScrollView(_summaryScrollPos);
 
             // Health Badge

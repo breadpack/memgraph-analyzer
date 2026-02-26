@@ -22,6 +22,7 @@ namespace Tools {
         };
 
         private void DrawNativeTab() {
+            AnalyzerGuidance.DrawTabHeader("All native Unity objects (Texture2D, Mesh, Material, etc.) sorted by size. Click a row for details.");
             DrawNativeCategorySummary();
             GUILayout.Space(4);
             DrawNativeCategoryBarChart();

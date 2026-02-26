@@ -8,6 +8,7 @@ namespace Tools {
         private Vector2 _unityScrollPos;
 
         private void DrawUnityTab() {
+            AnalyzerGuidance.DrawTabHeader("Tracked vs untracked memory, native plugin breakdown, UnsafeUtility, thread stacks, and GPU memory.");
             _unityScrollPos = EditorGUILayout.BeginScrollView(_unityScrollPos);
 
             DrawTrackedVsUntrackedSection();

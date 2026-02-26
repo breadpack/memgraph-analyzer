@@ -37,6 +37,7 @@ namespace Tools {
         };
 
         private void DrawVmmapTab() {
+            AnalyzerGuidance.DrawTabHeader("vmmap output: virtual/resident/dirty/swapped by region type. Hover region names for descriptions.");
             // Filter
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Filter:", GUILayout.Width(40));

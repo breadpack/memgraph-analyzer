@@ -14,6 +14,7 @@ namespace Tools {
         };
 
         private void DrawInsightsTab() {
+            AnalyzerGuidance.DrawTabHeader("Automated issue detection: duplicate assets, unreferenced objects, large static retention, and more.");
             if (_report.InsightResult == null) {
                 EditorGUILayout.HelpBox("No insight data available. Run analysis to generate insights.", MessageType.Info);
                 return;

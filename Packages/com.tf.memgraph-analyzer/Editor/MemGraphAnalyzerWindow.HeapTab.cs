@@ -26,6 +26,7 @@ namespace Tools {
         private static readonly Color UserCodeColor = new(0.3f, 0.85f, 0.3f, 1f);
 
         private void DrawHeapTab() {
+            AnalyzerGuidance.DrawTabHeader("Heap allocations by class with owner attribution. Click a row for size distribution and call stacks.");
             DrawHeapSuspiciousPatterns();
             DrawHeapOwnerGroupSummary();
             GUILayout.Space(4);

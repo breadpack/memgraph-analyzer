@@ -8,13 +8,13 @@ using UnityEngine;
 namespace Tools {
     public partial class SnapshotAnalyzerWindow {
         private void DrawSnapshotExportButtons() {
-            if (GUILayout.Button("Export Text", EditorStyles.toolbarButton, GUILayout.Width(75))) {
+            if (GUILayout.Button(AnalyzerGuidance.ExportText, EditorStyles.toolbarButton, GUILayout.Width(75))) {
                 ExportSnapshotTextReport();
             }
-            if (GUILayout.Button("Export CSV", EditorStyles.toolbarButton, GUILayout.Width(70))) {
+            if (GUILayout.Button(AnalyzerGuidance.ExportCsv, EditorStyles.toolbarButton, GUILayout.Width(70))) {
                 ExportSnapshotCsv();
             }
-            if (GUILayout.Button("Copy Summary", EditorStyles.toolbarButton, GUILayout.Width(90))) {
+            if (GUILayout.Button(AnalyzerGuidance.CopySummary, EditorStyles.toolbarButton, GUILayout.Width(90))) {
                 CopySnapshotSummaryToClipboard();
             }
         }

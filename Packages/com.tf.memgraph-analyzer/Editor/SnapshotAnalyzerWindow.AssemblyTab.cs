@@ -24,6 +24,7 @@ namespace Tools {
         };
 
         private void DrawAssemblyTab() {
+            AnalyzerGuidance.DrawTabHeader("Browse managed assemblies by classification. Expand to see namespaces and types with size breakdown.");
             DrawAssemblyClassificationSummary();
             GUILayout.Space(4);
 
