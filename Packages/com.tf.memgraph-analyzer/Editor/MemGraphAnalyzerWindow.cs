@@ -162,6 +162,10 @@ namespace Tools {
                 DrawExportButtons();
             }
 
+            if (GUILayout.Button("Snapshot", EditorStyles.toolbarButton, GUILayout.Width(65))) {
+                SnapshotAnalyzerWindow.ShowWindow();
+            }
+
             EditorGUILayout.EndHorizontal();
         }
 
