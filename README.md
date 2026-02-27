@@ -25,7 +25,7 @@ macOS `.memgraph` file analyzer for Unity iOS memory profiling.
 In Unity, go to **Window > Package Manager > + > Add package from git URL**:
 
 ```
-https://github.com/breadpack/memgraph-analyzer.git?path=Packages/com.tf.memgraph-analyzer
+https://github.com/breadpack/memgraph-analyzer.git?path=Packages/dev.breadpack.memgraph-analyzer
 ```
 
 ### Manual (Local Package)
@@ -54,7 +54,7 @@ In Xcode:
 ## Project Structure
 
 ```
-Packages/com.tf.memgraph-analyzer/
+Packages/dev.breadpack.memgraph-analyzer/
 └── Editor/
     ├── MemGraphAnalyzerWindow.cs          # Main EditorWindow + pipeline
     ├── MemGraphAnalyzerWindow.HeapTab.cs  # Heap allocations tab

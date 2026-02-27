@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Profiling.Memory.Experimental;
+using UnityEditor.Profiling.Memory.Experimental;
 
 namespace Tools {
     public static class SnapshotLoader {
@@ -58,13 +58,13 @@ namespace Tools {
 
             var names = new string[count];
             var assemblies = new string[count];
-            var flags = new TypeDescriptionFlags[count];
+            var flags = new TypeFlags[count];
             var sizes = new int[count];
             var typeInfoAddresses = new ulong[count];
             var fieldIndicesArrays = new int[count][];
             var staticFieldBytesArrays = new byte[count][];
 
-            snapshot.typeDescriptions.typeName.GetEntries(0, (uint)count, ref names);
+            snapshot.typeDescriptions.typeDescriptionName.GetEntries(0, (uint)count, ref names);
             snapshot.typeDescriptions.assembly.GetEntries(0, (uint)count, ref assemblies);
             snapshot.typeDescriptions.flags.GetEntries(0, (uint)count, ref flags);
             snapshot.typeDescriptions.size.GetEntries(0, (uint)count, ref sizes);
@@ -87,8 +87,8 @@ namespace Tools {
                     TypeInfoAddress = typeInfoAddresses[i],
                     FieldIndices = fieldIndicesArrays[i] ?? Array.Empty<int>(),
                     StaticFieldBytes = staticFieldBytesArrays[i],
-                    IsValueType = (flags[i] & TypeDescriptionFlags.kValueType) != 0,
-                    IsArray = (flags[i] & TypeDescriptionFlags.kArray) != 0,
+                    IsValueType = (flags[i] & TypeFlags.kValueType) != 0,
+                    IsArray = (flags[i] & TypeFlags.kArray) != 0,
                 };
             }
 
@@ -129,7 +129,7 @@ namespace Tools {
 
             var objectNames = new string[count];
             var instanceIds = new int[count];
-            var sizes = new long[count];
+            var sizes = new ulong[count];
             var nativeTypeIndices = new int[count];
             var gcHandleIndices = new int[count];
 
@@ -156,7 +156,7 @@ namespace Tools {
                 var obj = new NativeObjectInfo {
                     Name = objectNames[i] ?? "",
                     InstanceId = instanceIds[i],
-                    Size = sizes[i],
+                    Size = (long)sizes[i],
                     NativeTypeName = nativeTypeName,
                     Category = CategorizeNativeType(nativeTypeName),
                     GcHandleIndex = gcHandleIndices[i],
@@ -164,7 +164,7 @@ namespace Tools {
                     NativeObjectListIndex = i,
                 };
                 objects.Add(obj);
-                totalNativeSize += sizes[i];
+                totalNativeSize += (long)sizes[i];
             }
 
             report.NativeObjects.AddRange(objects);
