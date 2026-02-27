@@ -191,6 +191,20 @@ namespace Tools {
             GUILayout.Label(SnapshotLoader.GetNativeCategoryDisplayName(obj.Category));
             EditorGUILayout.EndHorizontal();
 
+            // Memory address
+            if (obj.NativeObjectAddress != 0) {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label("Address:", GUILayout.Width(100));
+                GUILayout.Label($"0x{obj.NativeObjectAddress:X}", _mutedStyle);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            // Flags
+            DrawNativeObjectFlags(obj);
+
+            // Root Reference / Subsystem
+            DrawNativeRootReference(obj);
+
             if (obj.GcHandleIndex >= 0) {
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label("GC Handle:", GUILayout.Width(100));
@@ -203,6 +217,39 @@ namespace Tools {
 
             EditorGUILayout.EndVertical();
             GUILayout.Space(2);
+        }
+
+        private void DrawNativeObjectFlags(NativeObjectInfo obj) {
+            // Unity ObjectFlags: IsDontDestroyOnLoad=1, IsPersistent=2, IsManager=4
+            int flags = obj.Flags;
+            if (flags == 0) return;
+
+            var flagLabels = new System.Collections.Generic.List<string>();
+            if ((flags & 1) != 0) flagLabels.Add("DontDestroyOnLoad");
+            if ((flags & 2) != 0) flagLabels.Add("Persistent");
+            if ((flags & 4) != 0) flagLabels.Add("Manager");
+
+            if (flagLabels.Count == 0) return;
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Flags:", GUILayout.Width(100));
+            GUILayout.Label(string.Join(", ", flagLabels), _warningStyle);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawNativeRootReference(NativeObjectInfo obj) {
+            if (_report.NativeRootReferences.Count == 0) return;
+
+            // Find matching root reference by id
+            foreach (var rootRef in _report.NativeRootReferences) {
+                if (rootRef.Id == obj.RootReferenceId) {
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Label("Subsystem:", GUILayout.Width(100));
+                    GUILayout.Label($"{rootRef.AreaName} / {rootRef.ObjectName}");
+                    EditorGUILayout.EndHorizontal();
+                    break;
+                }
+            }
         }
 
         private List<NativeObjectInfo> GetFilteredNativeObjects() {

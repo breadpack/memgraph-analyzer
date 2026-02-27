@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEditor.Profiling.Memory.Experimental;
 
 namespace Tools {
-    public static class SnapshotLoader {
+    public static partial class SnapshotLoader {
         public static SnapshotReport Load(string path) {
             var report = new SnapshotReport {
                 FilePath = path,
@@ -31,6 +31,25 @@ namespace Tools {
                 ExtractGcHandles(snapshot, report);
                 ExtractConnections(snapshot, report);
                 ExtractManagedHeapSections(snapshot, report);
+
+                // Extract additional native allocation data (graceful skip on failure)
+                try { ExtractNativeAllocations(snapshot, report); }
+                catch (Exception ex) { Debug.LogWarning($"[SnapshotLoader] ExtractNativeAllocations skipped: {ex.Message}"); }
+
+                try { ExtractNativeMemoryRegions(snapshot, report); }
+                catch (Exception ex) { Debug.LogWarning($"[SnapshotLoader] ExtractNativeMemoryRegions skipped: {ex.Message}"); }
+
+                try { ExtractNativeMemoryLabels(snapshot, report); }
+                catch (Exception ex) { Debug.LogWarning($"[SnapshotLoader] ExtractNativeMemoryLabels skipped: {ex.Message}"); }
+
+                try { ExtractNativeRootReferences(snapshot, report); }
+                catch (Exception ex) { Debug.LogWarning($"[SnapshotLoader] ExtractNativeRootReferences skipped: {ex.Message}"); }
+
+                try { ExtractNativeAllocationSites(snapshot, report); }
+                catch (Exception ex) { Debug.LogWarning($"[SnapshotLoader] ExtractNativeAllocationSites skipped: {ex.Message}"); }
+
+                try { ExtractNativeCallstackSymbols(snapshot, report); }
+                catch (Exception ex) { Debug.LogWarning($"[SnapshotLoader] ExtractNativeCallstackSymbols skipped: {ex.Message}"); }
 
                 report.Phase = SnapshotAnalysisPhase.ExtractingTypes;
             }
@@ -132,12 +151,20 @@ namespace Tools {
             var sizes = new ulong[count];
             var nativeTypeIndices = new int[count];
             var gcHandleIndices = new int[count];
+            var nativeObjectAddresses = new ulong[count];
+            var flags = new ObjectFlags[count];
+            var rootReferenceIds = new long[count];
+            var hideFlags = new HideFlags[count];
 
             snapshot.nativeObjects.objectName.GetEntries(0, (uint)count, ref objectNames);
             snapshot.nativeObjects.instanceId.GetEntries(0, (uint)count, ref instanceIds);
             snapshot.nativeObjects.size.GetEntries(0, (uint)count, ref sizes);
             snapshot.nativeObjects.nativeTypeArrayIndex.GetEntries(0, (uint)count, ref nativeTypeIndices);
             snapshot.nativeObjects.gcHandleIndex.GetEntries(0, (uint)count, ref gcHandleIndices);
+            snapshot.nativeObjects.nativeObjectAddress.GetEntries(0, (uint)count, ref nativeObjectAddresses);
+            snapshot.nativeObjects.flags.GetEntries(0, (uint)count, ref flags);
+            snapshot.nativeObjects.rootReferenceId.GetEntries(0, (uint)count, ref rootReferenceIds);
+            snapshot.nativeObjects.hideFlags.GetEntries(0, (uint)count, ref hideFlags);
 
             // Extract native type names
             int nativeTypeCount = (int)snapshot.nativeTypes.GetNumEntries();
@@ -162,6 +189,10 @@ namespace Tools {
                     GcHandleIndex = gcHandleIndices[i],
                     NativeTypeArrayIndex = nativeTypeIdx,
                     NativeObjectListIndex = i,
+                    NativeObjectAddress = nativeObjectAddresses[i],
+                    Flags = (int)flags[i],
+                    RootReferenceId = (int)rootReferenceIds[i],
+                    HideFlags = (int)hideFlags[i],
                 };
                 objects.Add(obj);
                 totalNativeSize += (long)sizes[i];

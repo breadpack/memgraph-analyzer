@@ -16,6 +16,11 @@ namespace Tools {
             DetectTypeExplosion(report, result);
             DetectLargeNativeOwnership(report, linkResult, result);
 
+            // Native allocation insights
+            DetectHighOverhead(report, result);
+            DetectUnmappedAllocations(report, result);
+            DetectSubsystemHotspots(report, result);
+
             RankInsights(result);
 
             result.TotalEstimatedSavings = 0;
@@ -319,6 +324,123 @@ namespace Tools {
                 EstimatedSavings = totalOwned / 4, // conservative estimate
                 RelatedObjectIndices = largeOwners.Select(o => o.managedIdx).ToList(),
             });
+        }
+
+        #endregion
+
+        #region High Allocation Overhead
+
+        private static void DetectHighOverhead(SnapshotReport report, SnapshotInsightResult result) {
+            var analysis = report.NativeAllocationAnalysis;
+            if (analysis == null || analysis.TotalUseful <= 0) return;
+
+            long totalOverhead = analysis.TotalOverhead + analysis.TotalPadding;
+            float overheadRatio = (float)totalOverhead / analysis.TotalUseful;
+
+            if (overheadRatio <= 0.10f) return;
+
+            var severity = overheadRatio > 0.25f
+                ? SnapshotInsightSeverity.Critical
+                : SnapshotInsightSeverity.Warning;
+
+            // Find top overhead regions
+            var highOverheadRegions = analysis.RegionTree
+                .Where(r => r.OverheadSize > 0)
+                .OrderByDescending(r => r.OverheadSize)
+                .Take(3)
+                .Select(r => $"{r.Name} ({VmmapParser.FormatSize(r.OverheadSize)})")
+                .ToList();
+
+            string regionList = highOverheadRegions.Count > 0
+                ? string.Join(", ", highOverheadRegions)
+                : "various regions";
+
+            result.Insights.Add(new SnapshotInsight {
+                Severity = severity,
+                Category = SnapshotInsightCategory.HighAllocationOverhead,
+                Title = $"High Allocation Overhead ({overheadRatio:P1})",
+                Description = $"Total overhead/padding: {VmmapParser.FormatSize(totalOverhead)} " +
+                              $"({overheadRatio:P1} of {VmmapParser.FormatSize(analysis.TotalUseful)} useful). " +
+                              $"Top regions: {regionList}",
+                Recommendation = "Consider using pool allocators for frequent small allocations. " +
+                                 "Review allocator configuration for regions with high overhead.",
+                EstimatedSavings = totalOverhead / 2,
+            });
+        }
+
+        #endregion
+
+        #region Unmapped Large Allocations
+
+        private static void DetectUnmappedAllocations(SnapshotReport report, SnapshotInsightResult result) {
+            var analysis = report.NativeAllocationAnalysis;
+            if (analysis == null || analysis.UnmappedAllocations.Count == 0) return;
+
+            long totalUnmapped = 0;
+            int largeUnmappedCount = 0;
+
+            foreach (int allocIdx in analysis.UnmappedAllocations) {
+                if (allocIdx < 0 || allocIdx >= report.NativeAllocations.Count) continue;
+                long size = (long)report.NativeAllocations[allocIdx].Size;
+                totalUnmapped += size;
+                if (size >= MB) largeUnmappedCount++;
+            }
+
+            if (largeUnmappedCount == 0) return;
+
+            var severity = totalUnmapped > 50 * MB
+                ? SnapshotInsightSeverity.Critical
+                : totalUnmapped > 10 * MB ? SnapshotInsightSeverity.Warning : SnapshotInsightSeverity.Info;
+
+            result.Insights.Add(new SnapshotInsight {
+                Severity = severity,
+                Category = SnapshotInsightCategory.UnmappedLargeAllocations,
+                Title = $"Unmapped Large Allocations ({largeUnmappedCount})",
+                Description = $"{largeUnmappedCount} allocations >=1MB (total: {VmmapParser.FormatSize(totalUnmapped)}) " +
+                              $"are not linked to any native object. " +
+                              $"These may be internal engine buffers or leaked allocations.",
+                Recommendation = "Investigate unmapped allocations in the Allocations tab. " +
+                                 "Check if custom native plugins are allocating without proper tracking.",
+                EstimatedSavings = totalUnmapped / 4,
+            });
+        }
+
+        #endregion
+
+        #region Subsystem Memory Hotspots
+
+        private static void DetectSubsystemHotspots(SnapshotReport report, SnapshotInsightResult result) {
+            var analysis = report.NativeAllocationAnalysis;
+            if (analysis == null || analysis.RootReferenceBreakdown.Count == 0) return;
+
+            long totalAllocSize = analysis.TotalUseful;
+            if (totalAllocSize <= 0) return;
+
+            // Group by AreaName
+            var areaSizes = new Dictionary<string, long>();
+            foreach (var g in analysis.RootReferenceBreakdown) {
+                if (!areaSizes.TryGetValue(g.AreaName, out long size))
+                    size = 0;
+                areaSizes[g.AreaName] = size + g.TotalSize;
+            }
+
+            // Find areas using >30% of total
+            foreach (var kv in areaSizes) {
+                float ratio = (float)kv.Value / totalAllocSize;
+                if (ratio <= 0.30f) continue;
+
+                result.Insights.Add(new SnapshotInsight {
+                    Severity = SnapshotInsightSeverity.Warning,
+                    Category = SnapshotInsightCategory.SubsystemMemoryHotspot,
+                    Title = $"Subsystem Hotspot: {kv.Key} ({ratio:P0})",
+                    Description = $"The \"{kv.Key}\" subsystem uses {VmmapParser.FormatSize(kv.Value)} " +
+                                  $"({ratio:P1} of total native allocations). " +
+                                  $"This is a dominant memory consumer.",
+                    Recommendation = $"Review the \"{kv.Key}\" subsystem's memory usage in the Allocations tab. " +
+                                     "Consider optimizing asset sizes or reducing object counts in this area.",
+                    EstimatedSavings = (long)(kv.Value * 0.1f),
+                });
+            }
         }
 
         #endregion

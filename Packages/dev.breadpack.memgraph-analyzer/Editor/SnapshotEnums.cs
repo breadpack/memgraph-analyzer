@@ -7,6 +7,7 @@ namespace Tools {
         BuildingAssemblyTree,
         CalculatingRetained,
         LinkingNativeManaged,
+        AnalyzingNativeAllocations,
         GeneratingInsights,
         Complete,
         Error,

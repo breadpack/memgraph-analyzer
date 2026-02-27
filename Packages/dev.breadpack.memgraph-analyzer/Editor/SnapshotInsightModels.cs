@@ -10,6 +10,10 @@ namespace Tools {
         EmptyGameObjects,
         TypeExplosion,
         LargeNativeOwnership,
+        HighAllocationOverhead,
+        FragmentedRegion,
+        UnmappedLargeAllocations,
+        SubsystemMemoryHotspot,
     }
 
     public class SnapshotInsight {

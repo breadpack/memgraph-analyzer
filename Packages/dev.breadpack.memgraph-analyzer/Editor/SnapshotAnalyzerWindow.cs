@@ -25,6 +25,7 @@ namespace Tools {
             new("Summary", "Memory totals, classification breakdown, top types, and detected issues"),
             new("Assemblies", "Browse assemblies by classification, namespace, and type"),
             new("Native Objects", "Native Unity objects (textures, meshes, etc.) sorted by size"),
+            new("Allocations", "Native memory allocation regions, subsystem breakdown, and call stacks"),
             new("References", "Search managed objects and trace reference chains to GC roots"),
             new("Insights", "Duplicate assets, unreferenced objects, and optimization hints"),
         };
@@ -71,8 +72,9 @@ namespace Tools {
                     case 0: DrawSummaryTab(); break;
                     case 1: DrawAssemblyTab(); break;
                     case 2: DrawNativeTab(); break;
-                    case 3: DrawReferencesTab(); break;
-                    case 4: DrawInsightsTab(); break;
+                    case 3: DrawNativeAllocationsTab(); break;
+                    case 4: DrawReferencesTab(); break;
+                    case 5: DrawInsightsTab(); break;
                 }
             } else if (_report != null && _report.Phase == SnapshotAnalysisPhase.Error) {
                 EditorGUILayout.HelpBox($"Analysis failed: {_report.ErrorMessage}", MessageType.Error);
@@ -142,12 +144,13 @@ namespace Tools {
 
             float progress = phase switch {
                 SnapshotAnalysisPhase.Loading => 0.1f,
-                SnapshotAnalysisPhase.ExtractingTypes => 0.25f,
-                SnapshotAnalysisPhase.CrawlingHeap => 0.4f,
-                SnapshotAnalysisPhase.BuildingAssemblyTree => 0.6f,
-                SnapshotAnalysisPhase.CalculatingRetained => 0.75f,
-                SnapshotAnalysisPhase.LinkingNativeManaged => 0.85f,
-                SnapshotAnalysisPhase.GeneratingInsights => 0.93f,
+                SnapshotAnalysisPhase.ExtractingTypes => 0.2f,
+                SnapshotAnalysisPhase.CrawlingHeap => 0.35f,
+                SnapshotAnalysisPhase.BuildingAssemblyTree => 0.5f,
+                SnapshotAnalysisPhase.CalculatingRetained => 0.65f,
+                SnapshotAnalysisPhase.LinkingNativeManaged => 0.75f,
+                SnapshotAnalysisPhase.AnalyzingNativeAllocations => 0.87f,
+                SnapshotAnalysisPhase.GeneratingInsights => 0.95f,
                 _ => 0f,
             };
             string label = phase switch {
@@ -157,6 +160,7 @@ namespace Tools {
                 SnapshotAnalysisPhase.BuildingAssemblyTree => "Building assembly tree...",
                 SnapshotAnalysisPhase.CalculatingRetained => "Calculating retained sizes...",
                 SnapshotAnalysisPhase.LinkingNativeManaged => "Linking native and managed objects...",
+                SnapshotAnalysisPhase.AnalyzingNativeAllocations => "Analyzing native allocations...",
                 SnapshotAnalysisPhase.GeneratingInsights => "Generating insights...",
                 _ => "Processing...",
             };
@@ -188,6 +192,10 @@ namespace Tools {
             _selectedRefObject = -1;
             _insightCategoryFilter = 0;
             _insightScrollPos = Vector2.zero;
+            _allocTabViewMode = 0;
+            _allocRegionFoldouts.Clear();
+            _allocRootRefScrollPos = Vector2.zero;
+            _allocSelectedAllocation = -1;
         }
 
         private bool ValidateSnapFile() {
@@ -307,6 +315,21 @@ namespace Tools {
             }
             catch (Exception ex) {
                 Debug.LogWarning($"[SnapshotAnalyzer] Native-managed linking failed: {ex.Message}. Continuing without link data.");
+            }
+
+            _report.Phase = SnapshotAnalysisPhase.AnalyzingNativeAllocations;
+            Repaint();
+            EditorApplication.delayCall += RunAnalyzeNativeAllocations;
+        }
+
+        private void RunAnalyzeNativeAllocations() {
+            try {
+                if (_report.NativeAllocations.Count > 0) {
+                    _report.NativeAllocationAnalysis = NativeAllocationAnalyzer.Analyze(_report);
+                }
+            }
+            catch (Exception ex) {
+                Debug.LogWarning($"[SnapshotAnalyzer] Native allocation analysis failed: {ex.Message}. Continuing without allocation analysis.");
             }
 
             _report.Phase = SnapshotAnalysisPhase.GeneratingInsights;

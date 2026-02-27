@@ -40,6 +40,17 @@ namespace Tools {
         public NativeManagedLinkResult LinkResult;
         public SnapshotInsightResult InsightResult;
 
+        // Native allocation data (extracted from snapshot)
+        public readonly List<NativeAllocationInfo> NativeAllocations = new();
+        public readonly List<NativeMemoryRegionInfo> NativeMemoryRegions = new();
+        public readonly List<NativeMemoryLabelInfo> NativeMemoryLabels = new();
+        public readonly List<NativeRootReferenceInfo> NativeRootReferences = new();
+        public readonly List<NativeAllocationSiteInfo> NativeAllocationSites = new();
+        public readonly List<NativeCallstackSymbolInfo> NativeCallstackSymbols = new();
+
+        // Native allocation analysis result
+        public NativeAllocationAnalysis NativeAllocationAnalysis;
+
         public bool SkipCrawl;
     }
 
@@ -48,6 +59,9 @@ namespace Tools {
         public long TotalManagedHeapSize;
         public int TotalNativeObjectCount;
         public int TotalManagedObjectCount;
+        public long TotalNativeAllocationSize;
+        public long TotalNativeOverheadSize;
+        public long TotalNativePaddingSize;
 
         public readonly Dictionary<AssemblyClassification, long> SizeByClassification = new();
         public readonly Dictionary<AssemblyClassification, int> TypeCountByClassification = new();
@@ -96,6 +110,10 @@ namespace Tools {
         public int GcHandleIndex;
         public int NativeTypeArrayIndex;
         public int NativeObjectListIndex;
+        public ulong NativeObjectAddress;
+        public int Flags;
+        public int RootReferenceId;
+        public int HideFlags;
     }
 
     public class NativeTypeSummary {
