@@ -390,8 +390,9 @@ namespace Tools {
         /// Strips allocator prefix, recognizes Il2CPP container patterns, removes templates/args.
         /// </summary>
         internal static string SummarizeName(string name, int maxLen = 80) {
-            if (string.IsNullOrEmpty(name) || name.Length <= maxLen) return name;
+            if (string.IsNullOrEmpty(name)) return name;
 
+            // Always strip allocator prefix + templates/args when " in " pattern exists
             int inIdx = name.IndexOf(" in ", StringComparison.Ordinal);
             if (inIdx > 0) {
                 string rest = name.Substring(inIdx + 4);
@@ -408,7 +409,10 @@ namespace Tools {
                     return stripped;
             }
 
-            // No " in " or result still too long: strip trailing (...)
+            // No " in " pattern: short names pass through
+            if (name.Length <= maxLen) return name;
+
+            // Strip trailing (...)
             int parenIdx = name.LastIndexOf('(');
             if (parenIdx > 0) {
                 string result = name.Substring(0, parenIdx).TrimEnd();
