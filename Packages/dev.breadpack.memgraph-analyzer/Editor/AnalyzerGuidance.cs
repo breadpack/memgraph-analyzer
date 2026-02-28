@@ -42,6 +42,8 @@ namespace Tools {
             new("Export CSV", "Export data as CSV for spreadsheet analysis.");
         internal static readonly GUIContent CopySummary =
             new("Copy Summary", "Copy a concise summary of the analysis to the clipboard.");
+        internal static readonly GUIContent AIExport =
+            new("AI Export", "Export current analysis as AI-optimized Markdown for Claude/GPT optimization requests.");
 
         // --- Show/Hide tab headers ---
         internal static readonly GUIContent ShowHeadersButton =

@@ -17,6 +17,18 @@ namespace Tools {
             if (GUILayout.Button(AnalyzerGuidance.CopySummary, EditorStyles.toolbarButton, GUILayout.Width(90))) {
                 CopySummaryToClipboard();
             }
+            if (GUILayout.Button(AnalyzerGuidance.AIExport, EditorStyles.toolbarButton, GUILayout.Width(65))) {
+                var viewState = new AIExportViewState {
+                    FilteredHeapRows = GetFilteredHeapRowsCached(),
+                    HeapFilter = _heapFilter,
+                    HeapOwnerFilter = _heapOwnerFilter,
+                    FilteredTraceRows = _cachedTraceRows,
+                    TraceFilterCat = _traceFilterCategory,
+                    TraceFilterCtrl = _traceFilterControl,
+                    TraceFilterAsset = _traceFilterAssetType,
+                };
+                AIExportWindow.Show(_report, _selectedTab, _diffResult, viewState);
+            }
         }
 
         private void ExportTextReport() {
