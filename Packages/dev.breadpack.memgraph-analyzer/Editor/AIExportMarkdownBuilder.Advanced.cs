@@ -94,7 +94,7 @@ namespace Tools {
                         ?? (a.TopEngineFunction != null
                             ? CallTreeParser.FormatFunctionName(a.TopEngineFunction)
                             : "(unknown)");
-                    sb.AppendLine($"| {i + 1} | {a.CallCount} | {Fmt(a.TotalBytes)} | {typeLabel} | {a.AssetType} | {func} |");
+                    sb.AppendLine($"| {i + 1} | {a.CallCount} | {Fmt(a.TotalBytes)} | {typeLabel} | {a.AssetType} | {TruncateName(func, 60)} |");
                 }
                 sb.AppendLine();
             }
@@ -136,7 +136,7 @@ namespace Tools {
                 sb.AppendLine("| Count | Bytes | Avg | Class |");
                 sb.AppendLine("|---|---|---|---|");
                 foreach (var a in unityAllocs) {
-                    sb.AppendLine($"| {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {a.ClassName} |");
+                    sb.AppendLine($"| {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {TruncateName(a.ClassName)} |");
                 }
                 sb.AppendLine();
             }
@@ -201,7 +201,7 @@ namespace Tools {
                 sb.AppendLine("| Count | Bytes | Class |");
                 sb.AppendLine("|---|---|---|");
                 foreach (var a in unsafeAllocs) {
-                    sb.AppendLine($"| {a.Count:N0} | {Fmt(a.TotalBytes)} | {a.ClassName} |");
+                    sb.AppendLine($"| {a.Count:N0} | {Fmt(a.TotalBytes)} | {TruncateName(a.ClassName)} |");
                 }
                 sb.AppendLine();
             }
@@ -295,7 +295,7 @@ namespace Tools {
                     string prefix = a.BytesDelta > 0 ? "+" : "";
                     string pctPre = a.BytesDeltaPercent > 0 ? "+" : "";
                     sb.AppendLine(
-                        $"| {a.ClassName} | {Fmt(a.BaselineBytes)} | {Fmt(a.CurrentBytes)} " +
+                        $"| {TruncateName(a.ClassName)} | {Fmt(a.BaselineBytes)} | {Fmt(a.CurrentBytes)} " +
                         $"| {prefix}{Fmt(a.BytesDelta)} | {pctPre}{a.BytesDeltaPercent:F1}% " +
                         $"| {HeapParser.GetOwnerDisplayName(a.Owner)} |");
                 }

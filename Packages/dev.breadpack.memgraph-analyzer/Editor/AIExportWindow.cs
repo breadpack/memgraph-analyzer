@@ -154,6 +154,8 @@ namespace Tools {
         private string BuildLeakHighlight() {
             var leaks = _report.Leaks;
             if (leaks == null || leaks.TotalLeakCount == 0) return "No leaks";
+            if (leaks.Leaks.Count == 0)
+                return $"{leaks.TotalLeakCount} leaks reported (summary only), {AIExportMarkdownBuilder.Fmt(leaks.TotalLeakBytes)}";
             var groups = LeaksParser.GroupLeaks(leaks);
             return $"{leaks.TotalLeakCount} leaks in {groups.Count} groups, {AIExportMarkdownBuilder.Fmt(leaks.TotalLeakBytes)}";
         }

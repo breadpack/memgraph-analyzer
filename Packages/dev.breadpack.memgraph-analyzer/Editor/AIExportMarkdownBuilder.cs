@@ -45,7 +45,8 @@ namespace Tools {
                     }
                 }
                 if (rec.RelatedAllocations.Count > 0) {
-                    sb.AppendLine($"- Related: {string.Join(", ", rec.RelatedAllocations)}");
+                    var truncated = rec.RelatedAllocations.Select(r => TruncateName(r, 60));
+                    sb.AppendLine($"- Related: {string.Join(", ", truncated)}");
                 }
                 sb.AppendLine();
             }
@@ -93,7 +94,7 @@ namespace Tools {
                 sb.AppendLine("| Class | Avg Size | Total | Count | Owner |");
                 sb.AppendLine("|---|---|---|---|---|");
                 foreach (var a in largeAvg) {
-                    sb.AppendLine($"| {a.ClassName} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {a.Count:N0} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
+                    sb.AppendLine($"| {TruncateName(a.ClassName)} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {a.Count:N0} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
                 }
                 sb.AppendLine($"**Impact**: ~{Fmt(totalImpact)} in oversized allocations");
                 sb.AppendLine("**Suggestion**: Review import settings, use streaming for large assets");
@@ -114,7 +115,7 @@ namespace Tools {
                 sb.AppendLine("| Class | Count | Avg | Total | Owner |");
                 sb.AppendLine("|---|---|---|---|---|");
                 foreach (var a in poolCandidates) {
-                    sb.AppendLine($"| {a.ClassName} | {a.Count:N0} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
+                    sb.AppendLine($"| {TruncateName(a.ClassName)} | {a.Count:N0} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
                 }
                 sb.AppendLine($"**Impact**: ~{Fmt(totalImpact)} in high-churn small allocations");
                 sb.AppendLine("**Suggestion**: Implement object pooling for these types");
@@ -164,7 +165,7 @@ namespace Tools {
             sb.AppendLine("|---|---|---|---|---|---|");
             for (int i = 0; i < evidenceCount; i++) {
                 var a = allocs[i];
-                sb.AppendLine($"| {i + 1} | {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {a.ClassName} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
+                sb.AppendLine($"| {i + 1} | {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {TruncateName(a.ClassName)} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
             }
             sb.AppendLine();
 
@@ -187,7 +188,25 @@ namespace Tools {
             var groups = LeaksParser.GroupLeaks(leaks);
 
             sb.AppendLine("## Summary");
-            sb.AppendLine($"Total: {leaks.TotalLeakCount} leaks, {Fmt(leaks.TotalLeakBytes)} | {groups.Count} groups by type");
+            sb.AppendLine($"Total: {leaks.TotalLeakCount} leaks, {Fmt(leaks.TotalLeakBytes)}");
+
+            // Handle case where individual leak entries weren't parsed
+            if (leaks.Leaks.Count == 0 || groups.Count == 0) {
+                sb.AppendLine();
+                sb.AppendLine("*Individual leak entries were not parsed (summary-only data available).*");
+                sb.AppendLine("Use `leaks --fullContent` on the .memgraph to get detailed per-leak information.");
+                sb.AppendLine();
+                sb.AppendLine("## General Remediation");
+                sb.AppendLine("- Run the leaks tool with stack trace output for detailed analysis");
+                sb.AppendLine("- Check for unreleased Objective-C objects and CF types");
+                sb.AppendLine("- Verify Destroy() <-> Instantiate() pairing for Unity objects");
+                sb.AppendLine("- Review AssetBundle unloading on scene transitions");
+                sb.AppendLine("- Check NativeArray/NativeList disposal (UnsafeUtility)");
+                sb.AppendLine();
+                return sb.ToString();
+            }
+
+            sb.AppendLine($"{groups.Count} groups by type");
             sb.AppendLine();
 
             // Leak Groups by severity (max 20)
@@ -197,7 +216,7 @@ namespace Tools {
             sb.AppendLine("|---|---|---|---|---|");
             for (int i = 0; i < groupCount; i++) {
                 var g = groups[i];
-                sb.AppendLine($"| {g.Severity.ToString().ToUpper()} | {g.TypeOrZone} | {g.Entries.Count} | {Fmt(g.TotalBytes)} | {HeapParser.GetOwnerDisplayName(g.Owner)} |");
+                sb.AppendLine($"| {g.Severity.ToString().ToUpper()} | {TruncateName(g.TypeOrZone, 60)} | {g.Entries.Count} | {Fmt(g.TotalBytes)} | {HeapParser.GetOwnerDisplayName(g.Owner)} |");
             }
             if (groups.Count > groupCount)
                 sb.AppendLine($"*...and {groups.Count - groupCount} more groups*");
@@ -341,6 +360,40 @@ namespace Tools {
         }
 
         #region Helpers
+
+        /// <summary>
+        /// Truncate long class/function names (e.g. Il2CPP templates) for Markdown tables.
+        /// Preserves the outermost function name and adds "..." for templates.
+        /// </summary>
+        internal static string TruncateName(string name, int maxLen = 80) {
+            if (string.IsNullOrEmpty(name) || name.Length <= maxLen) return name;
+
+            // Try to find "malloc in X" or "memalign in X" pattern — keep the allocator + first meaningful name
+            int inIdx = name.IndexOf(" in ", StringComparison.Ordinal);
+            if (inIdx > 0) {
+                string allocator = name.Substring(0, inIdx + 4); // "malloc in "
+                string rest = name.Substring(inIdx + 4);
+
+                // Find first template bracket or parenthesis
+                int templateStart = rest.IndexOf('<');
+                int parenStart = rest.IndexOf('(');
+                int cutPoint = -1;
+
+                if (templateStart >= 0 && (parenStart < 0 || templateStart < parenStart))
+                    cutPoint = templateStart;
+                else if (parenStart >= 0)
+                    cutPoint = parenStart;
+
+                if (cutPoint > 0) {
+                    string funcName = rest.Substring(0, cutPoint);
+                    string result = allocator + funcName + "(...)";
+                    if (result.Length <= maxLen) return result;
+                }
+            }
+
+            // Fallback: simple truncation
+            return name.Substring(0, maxLen - 3) + "...";
+        }
 
         internal static string Fmt(long bytes) => VmmapParser.FormatSize(bytes);
 
