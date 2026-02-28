@@ -11,9 +11,10 @@ namespace Tools {
         private static readonly Regex HeaderRegex = new(
             @"^(\d+)\s+calls?\s+for\s+(\d+)\s+bytes?:");
 
-        // Matches a single frame: "0xADDR (binary) function_name"
+        // Matches a single frame: "0xADDR (binary.name) function_name_with_spaces_and_parens"
+        // Group 1 = address, Group 2 = binary, Group 3 = function name (everything after binary)
         private static readonly Regex FrameRegex = new(
-            @"0x[0-9a-fA-F]+\s+\(([^)]+)\)\s+(\S+)");
+            @"(0x[0-9a-fA-F]+)\s+\(([^)]+)\)\s+(.+)");
 
         public static List<TracedAllocation> Parse(string output) {
             var results = new List<TracedAllocation>();
@@ -33,15 +34,14 @@ namespace Tools {
                 var framesText = line.Substring(headerMatch.Length);
                 var frames = ParseFrames(framesText);
 
-                results.Add(new TracedAllocation {
+                var alloc = new TracedAllocation {
                     CallCount = callCount,
                     TotalBytes = totalBytes,
-                    Frames = { },
-                });
-                // Add frames to the readonly list
+                };
                 foreach (var f in frames) {
-                    results[results.Count - 1].Frames.Add(f);
+                    alloc.Frames.Add(f);
                 }
+                results.Add(alloc);
             }
 
             return results;
@@ -60,34 +60,55 @@ namespace Tools {
                 var match = FrameRegex.Match(trimmed);
                 if (!match.Success) continue;
 
+                // Extract just the function name (before C++ parameter list)
+                var fullFunc = match.Groups[3].Value.Trim();
+                var funcName = StripCppParams(fullFunc);
+
                 frames.Add(new StackFrame {
-                    Binary = match.Groups[1].Value.Trim(),
-                    FunctionName = match.Groups[2].Value.Trim(),
-                    Address = ExtractAddress(trimmed),
+                    Address = match.Groups[1].Value,
+                    Binary = match.Groups[2].Value.Trim(),
+                    FunctionName = funcName,
                 });
             }
 
             return frames;
         }
 
-        private static string ExtractAddress(string segment) {
-            int idx = segment.IndexOf("0x");
-            if (idx < 0) return "";
-            int end = idx + 2;
-            while (end < segment.Length && IsHexChar(segment[end])) end++;
-            return segment.Substring(idx, end - idx);
-        }
+        /// <summary>
+        /// Strips C++ parameter list from function name.
+        /// "Shader::AwakeFromLoad(AwakeFromLoadMode)" → "Shader::AwakeFromLoad"
+        /// Keeps Objective-C selectors: "-[UnityFramework runUI...]" untouched.
+        /// </summary>
+        private static string StripCppParams(string funcName) {
+            if (string.IsNullOrEmpty(funcName)) return funcName;
 
-        private static bool IsHexChar(char c) {
-            return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            // Objective-C methods start with - or +, keep them as-is
+            if (funcName[0] == '-' || funcName[0] == '+')
+                return funcName;
+
+            // Find the first '(' that starts a C++ parameter list
+            int parenDepth = 0;
+            for (int i = 0; i < funcName.Length; i++) {
+                if (funcName[i] == '<') parenDepth++; // skip template args
+                else if (funcName[i] == '>') parenDepth--;
+                else if (funcName[i] == '(' && parenDepth == 0) {
+                    var before = funcName.Substring(0, i).TrimEnd();
+                    return before.Length > 0 ? before : funcName;
+                }
+            }
+
+            return funcName;
         }
 
         /// <summary>
-        /// Builds a shell command for malloc_history -allBySize with size filter and line limit.
+        /// Builds a shell command for malloc_history -allBySize.
+        /// Note: -allBySize does NOT support size filters like [100k+] (callTree only).
+        /// Output is already sorted by size descending, so head limit captures largest allocations.
+        /// Uses -q to suppress the header/footer for cleaner parsing.
         /// </summary>
-        public static string BuildCommand(string memGraphPath, string sizeFilter = "[100k+]", int lineLimit = 10000) {
+        public static string BuildCommand(string memGraphPath, int lineLimit = 5000) {
             var path = AddressTraceParser.EscapeForShell(memGraphPath);
-            return $"-c \"malloc_history {path} -allBySize {sizeFilter} 2>&1 | head -{lineLimit}\"";
+            return $"-c \"malloc_history {path} -allBySize -q 2>&1 | head -{lineLimit}\"";
         }
     }
 }
