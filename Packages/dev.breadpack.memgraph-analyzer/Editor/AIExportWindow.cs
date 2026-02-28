@@ -59,6 +59,12 @@ namespace Tools {
                     _viewState.HeapFilter, _viewState.HeapOwnerFilter),
                 BuildHeapHighlight));
 
+            docs.Add(BuildDoc(AIDocumentType.HeapEvidence, () =>
+                AIExportMarkdownBuilder.BuildHeapEvidence(
+                    _report, _viewState.FilteredHeapRows,
+                    _viewState.HeapFilter, _viewState.HeapOwnerFilter),
+                BuildHeapEvidenceHighlight));
+
             docs.Add(BuildDoc(AIDocumentType.Leaks, () =>
                 AIExportMarkdownBuilder.BuildLeakAnalysis(_report),
                 BuildLeakHighlight));
@@ -73,6 +79,10 @@ namespace Tools {
             docs.Add(BuildDoc(AIDocumentType.Unity, () =>
                 AIExportMarkdownBuilder.BuildUnityAnalysis(_report),
                 BuildUnityHighlight));
+
+            docs.Add(BuildDoc(AIDocumentType.UnityEvidence, () =>
+                AIExportMarkdownBuilder.BuildUnityEvidence(_report),
+                BuildUnityEvidenceHighlight));
 
             docs.Add(BuildDoc(AIDocumentType.Vmmap, () =>
                 AIExportMarkdownBuilder.BuildVmmapAnalysis(_report),
@@ -151,6 +161,12 @@ namespace Tools {
             return $"{largeCount} large, {poolCount} poolable, {ownerCount.Count} owners";
         }
 
+        private string BuildHeapEvidenceHighlight() {
+            var allocs = _viewState.FilteredHeapRows ?? _report.Heap.Allocations;
+            int count = Math.Min(allocs?.Count ?? 0, 30);
+            return $"Top {count} allocations (full names)";
+        }
+
         private string BuildLeakHighlight() {
             var leaks = _report.Leaks;
             if (leaks == null || leaks.TotalLeakCount == 0) return "No leaks";
@@ -177,6 +193,15 @@ namespace Tools {
             int pluginCount = _report.Summary.PluginBreakdowns.Count;
             string pct = total > 0 ? AIExportMarkdownBuilder.Pct(untracked, total) : "?";
             return $"{pct} untracked, {pluginCount} plugins";
+        }
+
+        private string BuildUnityEvidenceHighlight() {
+            int unity = 0, unsafeUtil = 0;
+            foreach (var a in _report.Heap.Allocations) {
+                if (a.Owner == MemoryOwner.Unity) unity++;
+                else if (a.Owner == MemoryOwner.UnsafeUtility) unsafeUtil++;
+            }
+            return $"{Math.Min(unity, 15)} Unity + {Math.Min(unsafeUtil, 10)} Unsafe (full names)";
         }
 
         private string BuildVmmapHighlight() {

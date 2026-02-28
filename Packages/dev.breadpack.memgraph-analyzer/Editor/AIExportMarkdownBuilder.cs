@@ -45,8 +45,8 @@ namespace Tools {
                     }
                 }
                 if (rec.RelatedAllocations.Count > 0) {
-                    var truncated = rec.RelatedAllocations.Select(r => TruncateName(r, 60));
-                    sb.AppendLine($"- Related: {string.Join(", ", truncated)}");
+                    var summarized = rec.RelatedAllocations.Select(r => SummarizeName(r, 60));
+                    sb.AppendLine($"- Related: {string.Join(", ", summarized)}");
                 }
                 sb.AppendLine();
             }
@@ -94,7 +94,7 @@ namespace Tools {
                 sb.AppendLine("| Class | Avg Size | Total | Count | Owner |");
                 sb.AppendLine("|---|---|---|---|---|");
                 foreach (var a in largeAvg) {
-                    sb.AppendLine($"| {TruncateName(a.ClassName)} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {a.Count:N0} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
+                    sb.AppendLine($"| {SummarizeName(a.ClassName)} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {a.Count:N0} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
                 }
                 sb.AppendLine($"**Impact**: ~{Fmt(totalImpact)} in oversized allocations");
                 sb.AppendLine("**Suggestion**: Review import settings, use streaming for large assets");
@@ -115,7 +115,7 @@ namespace Tools {
                 sb.AppendLine("| Class | Count | Avg | Total | Owner |");
                 sb.AppendLine("|---|---|---|---|---|");
                 foreach (var a in poolCandidates) {
-                    sb.AppendLine($"| {TruncateName(a.ClassName)} | {a.Count:N0} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
+                    sb.AppendLine($"| {SummarizeName(a.ClassName)} | {a.Count:N0} | {Fmt(a.AverageSize)} | {Fmt(a.TotalBytes)} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
                 }
                 sb.AppendLine($"**Impact**: ~{Fmt(totalImpact)} in high-churn small allocations");
                 sb.AppendLine("**Suggestion**: Implement object pooling for these types");
@@ -158,14 +158,38 @@ namespace Tools {
             // Related Issues
             AppendRelatedIssues(sb, report, InsightCategory.MemoryPressure, InsightCategory.Untracked, InsightCategory.Fragmentation);
 
-            // Top Allocations (evidence, top 15)
-            int evidenceCount = Math.Min(allocs.Count, 15);
-            sb.AppendLine($"## Top Allocations (evidence, top {evidenceCount})");
-            sb.AppendLine("| # | Count | Bytes | Avg | Class | Owner |");
+            sb.AppendLine("*Full allocation names → see 02a_Heap_Evidence.md*");
+            sb.AppendLine();
+
+            return sb.ToString();
+        }
+
+        // ------------------------------------------------------------------
+        // 02a_Heap_Evidence — full names for cross-referencing
+        // ------------------------------------------------------------------
+
+        public static string BuildHeapEvidence(MemGraphReport report, List<HeapAllocation> filteredRows,
+            string heapFilter, int heapOwnerFilter) {
+            var allocs = filteredRows ?? report.Heap.Allocations;
+            if (allocs == null || allocs.Count == 0) return "";
+
+            var sb = new StringBuilder();
+            sb.Append(BuildDetailHeader("Heap Evidence — Top Allocations", report));
+
+            // Filters note
+            var filters = new List<string>();
+            if (!string.IsNullOrEmpty(heapFilter)) filters.Add($"search=\"{heapFilter}\"");
+            if (heapOwnerFilter > 0) filters.Add($"owner={GetOwnerFilterName(heapOwnerFilter)}");
+            if (filters.Count > 0)
+                sb.AppendLine($"*Filters applied: {string.Join(", ", filters)}*\n");
+
+            int evidenceCount = Math.Min(allocs.Count, 30);
+            sb.AppendLine($"## Top Allocations (top {evidenceCount})");
+            sb.AppendLine("| # | Count | Bytes | Summary | Full Name | Owner |");
             sb.AppendLine("|---|---|---|---|---|---|");
             for (int i = 0; i < evidenceCount; i++) {
                 var a = allocs[i];
-                sb.AppendLine($"| {i + 1} | {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {TruncateName(a.ClassName)} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
+                sb.AppendLine($"| {i + 1} | {a.Count:N0} | {Fmt(a.TotalBytes)} | {SummarizeName(a.ClassName)} | {a.ClassName} | {HeapParser.GetOwnerDisplayName(a.Owner)} |");
             }
             sb.AppendLine();
 
@@ -216,7 +240,7 @@ namespace Tools {
             sb.AppendLine("|---|---|---|---|---|");
             for (int i = 0; i < groupCount; i++) {
                 var g = groups[i];
-                sb.AppendLine($"| {g.Severity.ToString().ToUpper()} | {TruncateName(g.TypeOrZone, 60)} | {g.Entries.Count} | {Fmt(g.TotalBytes)} | {HeapParser.GetOwnerDisplayName(g.Owner)} |");
+                sb.AppendLine($"| {g.Severity.ToString().ToUpper()} | {SummarizeName(g.TypeOrZone, 60)} | {g.Entries.Count} | {Fmt(g.TotalBytes)} | {HeapParser.GetOwnerDisplayName(g.Owner)} |");
             }
             if (groups.Count > groupCount)
                 sb.AppendLine($"*...and {groups.Count - groupCount} more groups*");
@@ -362,37 +386,97 @@ namespace Tools {
         #region Helpers
 
         /// <summary>
-        /// Truncate long class/function names (e.g. Il2CPP templates) for Markdown tables.
-        /// Preserves the outermost function name and adds "..." for templates.
+        /// Smart-summarize long class/function names (e.g. Il2CPP templates) for Markdown tables.
+        /// Strips allocator prefix, recognizes Il2CPP container patterns, removes templates/args.
         /// </summary>
-        internal static string TruncateName(string name, int maxLen = 80) {
+        internal static string SummarizeName(string name, int maxLen = 80) {
             if (string.IsNullOrEmpty(name) || name.Length <= maxLen) return name;
 
-            // Try to find "malloc in X" or "memalign in X" pattern — keep the allocator + first meaningful name
             int inIdx = name.IndexOf(" in ", StringComparison.Ordinal);
             if (inIdx > 0) {
-                string allocator = name.Substring(0, inIdx + 4); // "malloc in "
                 string rest = name.Substring(inIdx + 4);
 
-                // Find first template bracket or parenthesis
-                int templateStart = rest.IndexOf('<');
-                int parenStart = rest.IndexOf('(');
-                int cutPoint = -1;
+                // Il2CPP container pattern (google::sparse* with KeyWrapper<>)
+                if (rest.Contains("google::sparse")) {
+                    string result = SummarizeIl2CppContainer(rest);
+                    if (!string.IsNullOrEmpty(result) && result.Length <= maxLen) return result;
+                }
 
-                if (templateStart >= 0 && (parenStart < 0 || templateStart < parenStart))
-                    cutPoint = templateStart;
-                else if (parenStart >= 0)
-                    cutPoint = parenStart;
+                // General: strip templates and args → Class::Method
+                string stripped = StripTemplatesAndArgs(rest);
+                if (!string.IsNullOrEmpty(stripped) && stripped.Length <= maxLen)
+                    return stripped;
+            }
 
-                if (cutPoint > 0) {
-                    string funcName = rest.Substring(0, cutPoint);
-                    string result = allocator + funcName + "(...)";
-                    if (result.Length <= maxLen) return result;
+            // No " in " or result still too long: strip trailing (...)
+            int parenIdx = name.LastIndexOf('(');
+            if (parenIdx > 0) {
+                string result = name.Substring(0, parenIdx).TrimEnd();
+                if (result.Length <= maxLen) return result;
+            }
+
+            // Hard truncate
+            return name.Substring(0, maxLen - 3) + "...";
+        }
+
+        private static string SummarizeIl2CppContainer(string funcSignature) {
+            // Extract core type from KeyWrapper<TypeName>
+            string typeName = "Il2Cpp";
+            int kwIdx = funcSignature.IndexOf("KeyWrapper<", StringComparison.Ordinal);
+            if (kwIdx >= 0) {
+                int typeStart = kwIdx + "KeyWrapper<".Length;
+                int depth = 1;
+                int typeEnd = typeStart;
+                while (typeEnd < funcSignature.Length && depth > 0) {
+                    if (funcSignature[typeEnd] == '<') depth++;
+                    else if (funcSignature[typeEnd] == '>') depth--;
+                    if (depth > 0) typeEnd++;
+                }
+                if (typeEnd > typeStart) {
+                    typeName = funcSignature.Substring(typeStart, typeEnd - typeStart)
+                        .Replace(" const*", "").Replace(" const", "")
+                        .Replace("*", "").Trim();
                 }
             }
 
-            // Fallback: simple truncation
-            return name.Substring(0, maxLen - 3) + "...";
+            // Container name
+            string container;
+            if (funcSignature.Contains("sparse_hashtable"))
+                container = "hashtable";
+            else if (funcSignature.Contains("sparsetable"))
+                container = "sparsetable";
+            else
+                container = "container";
+
+            // Method name from stripped signature
+            string method = "";
+            string stripped = StripTemplatesAndArgs(funcSignature);
+            int lastColon = stripped.LastIndexOf("::", StringComparison.Ordinal);
+            if (lastColon >= 0 && lastColon + 2 < stripped.Length)
+                method = stripped.Substring(lastColon + 2);
+
+            return string.IsNullOrEmpty(method)
+                ? $"{typeName} {container}"
+                : $"{typeName} {container}::{method}";
+        }
+
+        private static string StripTemplatesAndArgs(string input) {
+            var sb = new StringBuilder(input.Length);
+            int templateDepth = 0;
+            int parenDepth = 0;
+
+            for (int i = 0; i < input.Length; i++) {
+                char c = input[i];
+                if (c == '<') { templateDepth++; continue; }
+                if (c == '>' && templateDepth > 0) { templateDepth--; continue; }
+                if (c == '(' && templateDepth == 0) { parenDepth++; continue; }
+                if (c == ')' && parenDepth > 0) { parenDepth--; continue; }
+
+                if (templateDepth == 0 && parenDepth == 0)
+                    sb.Append(c);
+            }
+
+            return sb.ToString().Trim();
         }
 
         internal static string Fmt(long bytes) => VmmapParser.FormatSize(bytes);

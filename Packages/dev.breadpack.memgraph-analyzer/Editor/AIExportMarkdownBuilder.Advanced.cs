@@ -94,7 +94,7 @@ namespace Tools {
                         ?? (a.TopEngineFunction != null
                             ? CallTreeParser.FormatFunctionName(a.TopEngineFunction)
                             : "(unknown)");
-                    sb.AppendLine($"| {i + 1} | {a.CallCount} | {Fmt(a.TotalBytes)} | {typeLabel} | {a.AssetType} | {TruncateName(func, 60)} |");
+                    sb.AppendLine($"| {i + 1} | {a.CallCount} | {Fmt(a.TotalBytes)} | {typeLabel} | {a.AssetType} | {SummarizeName(func, 60)} |");
                 }
                 sb.AppendLine();
             }
@@ -124,22 +124,6 @@ namespace Tools {
             sb.AppendLine($"- Untracked: {Fmt(untracked)} ({Pct(untracked, heapTotal)})");
             sb.AppendLine($"- Assessment: **{assessment}**");
             sb.AppendLine();
-
-            // Top Unity Allocations (top 15)
-            var unityAllocs = report.Heap.Allocations
-                .Where(a => a.Owner == MemoryOwner.Unity)
-                .OrderByDescending(a => a.TotalBytes)
-                .Take(15)
-                .ToList();
-            if (unityAllocs.Count > 0) {
-                sb.AppendLine("## Top Unity Allocations");
-                sb.AppendLine("| Count | Bytes | Avg | Class |");
-                sb.AppendLine("|---|---|---|---|");
-                foreach (var a in unityAllocs) {
-                    sb.AppendLine($"| {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {TruncateName(a.ClassName)} |");
-                }
-                sb.AppendLine();
-            }
 
             // Plugin Health Assessment
             if (report.Summary.PluginBreakdowns.Count > 0) {
@@ -190,23 +174,63 @@ namespace Tools {
                 sb.AppendLine();
             }
 
-            // UnsafeUtility Allocations (top 10)
+            sb.AppendLine("*Full allocation names → see 05a_Unity_Evidence.md*");
+            sb.AppendLine();
+
+            return sb.ToString();
+        }
+
+        // ------------------------------------------------------------------
+        // 05a_Unity_Evidence — full names for Unity/Unsafe allocations
+        // ------------------------------------------------------------------
+
+        public static string BuildUnityEvidence(MemGraphReport report) {
+            var sb = new StringBuilder();
+            bool hasContent = false;
+
+            // Top Unity Allocations (top 15, full names)
+            var unityAllocs = report.Heap.Allocations
+                .Where(a => a.Owner == MemoryOwner.Unity)
+                .OrderByDescending(a => a.TotalBytes)
+                .Take(15)
+                .ToList();
+            if (unityAllocs.Count > 0) {
+                if (!hasContent) {
+                    sb.Append(BuildDetailHeader("Unity Evidence — Allocation Details", report));
+                    hasContent = true;
+                }
+                sb.AppendLine("## Top Unity Allocations");
+                sb.AppendLine("| # | Count | Bytes | Avg | Class |");
+                sb.AppendLine("|---|---|---|---|---|");
+                for (int i = 0; i < unityAllocs.Count; i++) {
+                    var a = unityAllocs[i];
+                    sb.AppendLine($"| {i + 1} | {a.Count:N0} | {Fmt(a.TotalBytes)} | {Fmt(a.AverageSize)} | {a.ClassName} |");
+                }
+                sb.AppendLine();
+            }
+
+            // UnsafeUtility Allocations (top 10, full names)
             var unsafeAllocs = report.Heap.Allocations
                 .Where(a => a.Owner == MemoryOwner.UnsafeUtility)
                 .OrderByDescending(a => a.TotalBytes)
                 .Take(10)
                 .ToList();
             if (unsafeAllocs.Count > 0) {
+                if (!hasContent) {
+                    sb.Append(BuildDetailHeader("Unity Evidence — Allocation Details", report));
+                    hasContent = true;
+                }
                 sb.AppendLine("## UnsafeUtility Allocations");
-                sb.AppendLine("| Count | Bytes | Class |");
-                sb.AppendLine("|---|---|---|");
-                foreach (var a in unsafeAllocs) {
-                    sb.AppendLine($"| {a.Count:N0} | {Fmt(a.TotalBytes)} | {TruncateName(a.ClassName)} |");
+                sb.AppendLine("| # | Count | Bytes | Class |");
+                sb.AppendLine("|---|---|---|---|");
+                for (int i = 0; i < unsafeAllocs.Count; i++) {
+                    var a = unsafeAllocs[i];
+                    sb.AppendLine($"| {i + 1} | {a.Count:N0} | {Fmt(a.TotalBytes)} | {a.ClassName} |");
                 }
                 sb.AppendLine();
             }
 
-            return sb.ToString();
+            return hasContent ? sb.ToString() : "";
         }
 
         // ------------------------------------------------------------------
@@ -295,7 +319,7 @@ namespace Tools {
                     string prefix = a.BytesDelta > 0 ? "+" : "";
                     string pctPre = a.BytesDeltaPercent > 0 ? "+" : "";
                     sb.AppendLine(
-                        $"| {TruncateName(a.ClassName)} | {Fmt(a.BaselineBytes)} | {Fmt(a.CurrentBytes)} " +
+                        $"| {SummarizeName(a.ClassName)} | {Fmt(a.BaselineBytes)} | {Fmt(a.CurrentBytes)} " +
                         $"| {prefix}{Fmt(a.BytesDelta)} | {pctPre}{a.BytesDeltaPercent:F1}% " +
                         $"| {HeapParser.GetOwnerDisplayName(a.Owner)} |");
                 }
