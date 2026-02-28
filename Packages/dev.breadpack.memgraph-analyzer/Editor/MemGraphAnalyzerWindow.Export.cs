@@ -142,6 +142,39 @@ namespace Tools {
                     }
                 }
 
+                // Asset & Logic Allocation Trace
+                if (_report.AllocationTrace != null && _report.AllocationTrace.Allocations.Count > 0) {
+                    var at = _report.AllocationTrace;
+                    sb.AppendLine("--- Asset & Logic Allocation Trace ---");
+                    sb.AppendLine("Category Breakdown:");
+                    foreach (var cat in at.CategoryBreakdown) {
+                        sb.AppendLine($"  {cat.Category,-20} {VmmapParser.FormatSize(cat.TotalBytes),12} ({cat.Percentage:F1}%)");
+                    }
+                    sb.AppendLine();
+
+                    sb.AppendLine("Top Allocations (by size):");
+                    foreach (var alloc in at.Allocations.OrderByDescending(a => a.TotalBytes).Take(50)) {
+                        string ctrlLabel = alloc.Controllability switch {
+                            Controllability.UserControllable => "UserControllable",
+                            Controllability.PartiallyControllable => "Partially",
+                            Controllability.EngineOwned => "EngineOwned",
+                            Controllability.SystemOwned => "SystemOwned",
+                            _ => "Unknown",
+                        };
+                        string typeLabel = alloc.AssetType != AssetType.None
+                            ? $"{alloc.Category}/{alloc.AssetType}"
+                            : alloc.Category.ToString();
+                        string funcLabel = alloc.TopUserFunction
+                            ?? (alloc.TopEngineFunction != null
+                                ? CallTreeParser.FormatFunctionName(alloc.TopEngineFunction)
+                                : "(unknown)");
+                        sb.AppendLine(
+                            $"  [{ctrlLabel}] [{typeLabel}] {funcLabel}  " +
+                            $"{VmmapParser.FormatSize(alloc.TotalBytes)} ({alloc.CallCount} call{(alloc.CallCount != 1 ? "s" : "")})");
+                    }
+                    sb.AppendLine();
+                }
+
                 // Top heap allocations
                 sb.AppendLine("--- Top 50 Heap Allocations ---");
                 sb.AppendLine($"{"Count",8} {"Bytes",12} {"Avg",10} {"Owner",-16} Class Name");
@@ -182,6 +215,40 @@ namespace Tools {
                 EditorUtility.RevealInFinder(path);
             }
             catch (Exception ex) {
+                EditorUtility.DisplayDialog("Export Error", $"Failed to export:\n{ex.Message}", "OK");
+            }
+        }
+
+        private void ExportAllocationTraceCsv() {
+            if (_report?.AllocationTrace == null || _report.AllocationTrace.Allocations.Count == 0) {
+                EditorUtility.DisplayDialog("No Data", "No allocation trace data to export.", "OK");
+                return;
+            }
+
+            var defaultName = $"memgraph_alloc_trace_{_report.AnalysisTime:yyyyMMdd_HHmmss}.csv";
+            var path = EditorUtility.SaveFilePanel("Export Allocation Trace CSV", "", defaultName, "csv");
+            if (string.IsNullOrEmpty(path)) return;
+
+            try {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("CallCount,TotalBytes,Category,AssetType,Controllability,TopUserFunction,TopEngineFunction,Summary");
+
+                foreach (var alloc in _report.AllocationTrace.Allocations.OrderByDescending(a => a.TotalBytes)) {
+                    var userFunc = (alloc.TopUserFunction ?? "").Replace("\"", "\"\"");
+                    var engineFunc = (alloc.TopEngineFunction != null
+                        ? CallTreeParser.FormatFunctionName(alloc.TopEngineFunction)
+                        : "").Replace("\"", "\"\"");
+                    var summary = (alloc.Summary ?? "").Replace("\"", "\"\"");
+                    sb.AppendLine(
+                        $"{alloc.CallCount},{alloc.TotalBytes},{alloc.Category},{alloc.AssetType}," +
+                        $"{alloc.Controllability},\"{userFunc}\",\"{engineFunc}\",\"{summary}\"");
+                }
+
+                System.IO.File.WriteAllText(path, sb.ToString());
+                Debug.Log($"[MemGraphAnalyzer] Allocation trace CSV exported to: {path}");
+                EditorUtility.RevealInFinder(path);
+            }
+            catch (System.Exception ex) {
                 EditorUtility.DisplayDialog("Export Error", $"Failed to export:\n{ex.Message}", "OK");
             }
         }

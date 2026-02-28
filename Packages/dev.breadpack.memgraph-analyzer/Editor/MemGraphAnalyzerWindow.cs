@@ -29,6 +29,7 @@ namespace Tools {
             new("Heap Analysis", "Heap allocations by class with size distribution and call stacks"),
             new("Leak Detection", "Leaked memory objects with stack traces and remediation guidance"),
             new("Unity-Specific", "Tracked vs untracked, plugin memory, GPU, thread stacks"),
+            new("Asset & Logic", "Allocation trace by asset type and game logic with controllability analysis"),
             new("Comparison", "Side-by-side diff of two .memgraph files"),
         };
 
@@ -105,7 +106,8 @@ namespace Tools {
                     case 2: DrawHeapTab(); break;
                     case 3: DrawLeaksTab(); break;
                     case 4: DrawUnityTab(); break;
-                    case 5: DrawComparisonTab(); break;
+                    case 5: DrawAllocationTraceTab(); break;
+                    case 6: DrawComparisonTab(); break;
                 }
             } else {
                 if (_report != null && _report.Phase == AnalysisPhase.Error) {
@@ -118,9 +120,9 @@ namespace Tools {
                 if (_report == null || _report.Phase != AnalysisPhase.Complete) {
                     GUILayout.Space(8);
                     if (GUILayout.Button("Open Comparison Tool", GUILayout.Height(28))) {
-                        _selectedTab = 5;
+                        _selectedTab = 6;
                     }
-                    if (_selectedTab == 5) {
+                    if (_selectedTab == 6) {
                         GUILayout.Space(4);
                         DrawComparisonTab();
                     } else {
@@ -194,8 +196,9 @@ namespace Tools {
                 AnalysisPhase.RunningVmmap => 0.35f,
                 AnalysisPhase.RunningHeap => 0.50f,
                 AnalysisPhase.RunningLeaks => 0.65f,
-                AnalysisPhase.RunningCallTree => 0.82f,
-                AnalysisPhase.Categorizing => 0.93f,
+                AnalysisPhase.RunningCallTree => 0.78f,
+                AnalysisPhase.RunningAllocationTrace => 0.88f,
+                AnalysisPhase.Categorizing => 0.95f,
                 _ => 0f,
             };
             string label = phase switch {
@@ -205,6 +208,7 @@ namespace Tools {
                 AnalysisPhase.RunningHeap => "Running heap --showSizes --sortBySize...",
                 AnalysisPhase.RunningLeaks => "Running leaks...",
                 AnalysisPhase.RunningCallTree => "Running malloc_history (call tree)...",
+                AnalysisPhase.RunningAllocationTrace => "Running malloc_history (allocation trace)...",
                 AnalysisPhase.Categorizing => "Categorizing results...",
                 _ => "Processing...",
             };
@@ -322,6 +326,21 @@ namespace Tools {
             MemGraphCommandRunner.RunAsync("/bin/sh", shellArgs, result => {
                 if (!string.IsNullOrEmpty(result.Output))
                     _report.CallTree = CallTreeParser.ParseInvertedCallTree(result.Output);
+                RunAllocationTrace();
+            });
+        }
+
+        private void RunAllocationTrace() {
+            _report.Phase = AnalysisPhase.RunningAllocationTrace;
+            Repaint();
+
+            var shellArgs = AllocationTraceBySizeParser.BuildCommand(_memGraphPath);
+            MemGraphCommandRunner.RunAsync("/bin/sh", shellArgs, result => {
+                if (!string.IsNullOrEmpty(result.Output)) {
+                    var raw = AllocationTraceBySizeParser.Parse(result.Output);
+                    _report.AllocationTrace = AllocationClassifier.Classify(raw);
+                    _report.AllocationTrace.RawOutput = result.Output;
+                }
                 BuildSummary();
             });
         }

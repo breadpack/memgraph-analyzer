@@ -20,6 +20,7 @@ namespace Tools {
         RunningHeap,
         RunningLeaks,
         RunningCallTree,
+        RunningAllocationTrace,
         Categorizing,
         Complete,
         Error,
@@ -94,6 +95,7 @@ namespace Tools {
         public MemorySummary Summary = new();
         public readonly List<MemoryInsight> Insights = new();
         public List<CallTreeEntry> CallTree = new();
+        public AllocationTraceResult AllocationTrace;
         public OptimizationResult Optimizations;
     }
 

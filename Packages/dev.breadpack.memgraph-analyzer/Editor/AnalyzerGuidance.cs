@@ -207,6 +207,7 @@ namespace Tools {
                 ("Heap Analysis", "Heap allocations by class with size distribution and call stacks."),
                 ("Leak Detection", "Leaked memory objects with stack traces and remediation guidance."),
                 ("Unity-Specific", "Tracked vs untracked, plugin memory, GPU, thread stacks."),
+                ("Asset & Logic", "Allocation trace by asset type and game logic with controllability."),
                 ("Comparison", "Side-by-side diff of two .memgraph files."),
             });
 
