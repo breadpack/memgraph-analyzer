@@ -71,7 +71,7 @@ namespace Tools {
             // AllocationTraceTab
             _cachedTraceRows = null;
             _cachedTraceKey = default;
-            _expandedTraceRows.Clear();
+            _selectedTraceRow = -1;
 
             // LeaksTab
             _cachedLeakGroups = null;

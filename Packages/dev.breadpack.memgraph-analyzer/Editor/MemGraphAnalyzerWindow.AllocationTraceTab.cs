@@ -9,7 +9,7 @@ namespace Tools {
         private Controllability _traceFilterControl = (Controllability)(-1);
         private AssetType _traceFilterAssetType = (AssetType)(-1);
         private int _traceSortMode; // 0=Size, 1=Count, 2=Category
-        private readonly HashSet<int> _expandedTraceRows = new();
+        private int _selectedTraceRow = -1;
         private Vector2 _traceScrollPos;
 
         private static readonly Color BarAssetColor = new(0.4f, 0.75f, 0.95f, 0.8f);
@@ -25,6 +25,16 @@ namespace Tools {
         private string[] _traceRowSizeStr;
         private string[] _traceRowCallStr;
         private string[] _traceRowLabelStr;
+        private string[] _traceRowTagStr;      // pre-formatted "Category" or "Category/AssetType"
+        private string[] _traceRowCtrlStr;      // pre-formatted controllability label
+        private string[] _traceRowSeverityIcon;
+        private Color[] _traceRowSeverityColor;
+        private Color[] _traceRowCatColor;
+        private Color[] _traceRowCtrlColor;
+        private long _cachedTraceFilteredBytes;
+
+        // === Virtual scroll ===
+        private const float TraceRowHeight = 40f; // collapsed row height (header + tags)
 
         private void DrawAllocationTraceTab() {
             AnalyzerGuidance.DrawTabHeader(
@@ -132,51 +142,77 @@ namespace Tools {
 
         private void DrawTraceList(AllocationTraceResult trace) {
             var sorted = GetFilteredTraceRowsCached(trace);
+            int rowCount = sorted.Count;
 
-            // Stats (use cached pre-computed sum)
-            long filteredBytes = 0;
-            foreach (var a in sorted)
-                filteredBytes += a.TotalBytes;
-            int filteredCount = sorted.Count;
+            // Stats (pre-computed)
             EditorGUILayout.LabelField(
-                $"Showing {filteredCount} allocations ({VmmapParser.FormatSize(filteredBytes)}) " +
+                $"Showing {rowCount} allocations ({VmmapParser.FormatSize(_cachedTraceFilteredBytes)}) " +
                 $"of {trace.Allocations.Count} total ({VmmapParser.FormatSize(trace.TotalAnalyzedBytes)})",
                 _mutedStyle);
 
+            // Virtual scroll
             _traceScrollPos = EditorGUILayout.BeginScrollView(_traceScrollPos);
 
-            for (int i = 0; i < sorted.Count; i++) {
-                DrawTraceRow(sorted[i], i);
+            int firstVisible = Mathf.Max(0, Mathf.FloorToInt(_traceScrollPos.y / TraceRowHeight) - 1);
+            int visibleCount = Mathf.CeilToInt(position.height / TraceRowHeight) + 2;
+            int lastVisible = Mathf.Min(rowCount - 1, firstVisible + visibleCount);
+
+            // Top spacer
+            if (firstVisible > 0)
+                GUILayout.Space(firstVisible * TraceRowHeight);
+
+            for (int i = firstVisible; i <= lastVisible && i < rowCount; i++) {
+                DrawTraceRowCompact(sorted[i], i);
             }
+
+            // Bottom spacer
+            int remaining = rowCount - lastVisible - 1;
+            if (remaining > 0)
+                GUILayout.Space(remaining * TraceRowHeight);
 
             EditorGUILayout.EndScrollView();
+
+            // Detail panel below scroll view for selected row
+            if (_selectedTraceRow >= 0 && _selectedTraceRow < rowCount) {
+                DrawTraceDetail(sorted[_selectedTraceRow]);
+            }
         }
 
-        private void DrawTraceRow(TracedAllocation alloc, int index) {
-            bool isExpanded = _expandedTraceRows.Contains(index);
-            string severityIcon = GetTraceSeverityIcon(alloc.TotalBytes);
-            var severityColor = GetTraceSeverityColor(alloc.TotalBytes);
+        private void DrawTraceRowCompact(TracedAllocation alloc, int index) {
+            bool isSelected = _selectedTraceRow == index;
 
-            // Header row
-            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+            // Single row with click detection
+            var rect = EditorGUILayout.BeginHorizontal(GUILayout.Height(18));
 
-            // Expand toggle
-            bool newExpanded = EditorGUILayout.Foldout(isExpanded, "", true, EditorStyles.foldout);
-            if (newExpanded != isExpanded) {
-                if (newExpanded) _expandedTraceRows.Add(index);
-                else _expandedTraceRows.Remove(index);
+            // Selection highlight
+            if (isSelected && Event.current.type == EventType.Repaint)
+                EditorGUI.DrawRect(rect, SelectionColor);
+
+            // Click detection
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition)) {
+                _selectedTraceRow = isSelected ? -1 : index;
+                Event.current.Use();
+                Repaint();
             }
 
-            // Severity icon
+            // Severity icon (pre-cached color)
             var prevColor = GUI.contentColor;
-            GUI.contentColor = severityColor;
-            GUILayout.Label(severityIcon, EditorStyles.boldLabel, GUILayout.Width(24));
+            GUI.contentColor = _traceRowSeverityColor[index];
+            GUILayout.Label(_traceRowSeverityIcon[index], EditorStyles.boldLabel, GUILayout.Width(24));
             GUI.contentColor = prevColor;
 
-            // Main label - use pre-formatted string
+            // Main label (pre-formatted)
             GUILayout.Label(_traceRowLabelStr[index], EditorStyles.boldLabel, GUILayout.MinWidth(200));
 
             GUILayout.FlexibleSpace();
+
+            // Category tag (inline, no miniButton - just colored label)
+            var prevBg = GUI.backgroundColor;
+            GUI.backgroundColor = _traceRowCatColor[index];
+            GUILayout.Label(_traceRowTagStr[index], EditorStyles.miniButton, GUILayout.ExpandWidth(false));
+            GUI.backgroundColor = _traceRowCtrlColor[index];
+            GUILayout.Label(_traceRowCtrlStr[index], EditorStyles.miniButton, GUILayout.ExpandWidth(false));
+            GUI.backgroundColor = prevBg;
 
             // Size (pre-formatted)
             GUILayout.Label(_traceRowSizeStr[index], GUILayout.Width(70));
@@ -185,30 +221,12 @@ namespace Tools {
             GUILayout.Label(_traceRowCallStr[index], _mutedStyle, GUILayout.Width(65));
 
             EditorGUILayout.EndHorizontal();
-
-            // Category/Controllability tags
-            if (!isExpanded) {
-                EditorGUILayout.BeginHorizontal();
-                GUILayout.Space(32);
-                DrawCategoryTag(alloc.Category, alloc.AssetType);
-                GUILayout.Space(4);
-                DrawControllabilityTag(alloc.Controllability);
-                GUILayout.FlexibleSpace();
-                EditorGUILayout.EndHorizontal();
-            }
-
-            // Expanded detail
-            if (isExpanded) {
-                DrawTraceDetail(alloc);
-            }
         }
 
         private void DrawTraceDetail(TracedAllocation alloc) {
-            EditorGUI.indentLevel++;
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-            // Summary
-            EditorGUILayout.LabelField("Summary", alloc.Summary ?? "(none)");
+            GUILayout.Label($">> {alloc.Summary ?? "(none)"}", _headerStyle);
+            GUILayout.Space(4);
 
             // Category detail
             EditorGUILayout.BeginHorizontal();
@@ -217,6 +235,9 @@ namespace Tools {
             GUILayout.Space(12);
             GUILayout.Label("Controllability:", GUILayout.Width(90));
             DrawControllabilityTag(alloc.Controllability);
+            GUILayout.Space(12);
+            GUILayout.Label("Size:", GUILayout.Width(35));
+            GUILayout.Label(VmmapParser.FormatSize(alloc.TotalBytes), EditorStyles.boldLabel);
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
 
@@ -235,7 +256,7 @@ namespace Tools {
                 for (int i = 0; i < maxFrames; i++) {
                     var frame = alloc.Frames[i];
                     bool isUser = CallTreeParser.IsUserCode(frame.FunctionName);
-                    var style = isUser ? EditorStyles.boldLabel : _mutedStyle;
+                    var style = isUser ? _userCodeStyle : _mutedStyle;
                     string funcDisplay = isUser
                         ? CallTreeParser.FormatFunctionName(frame.FunctionName)
                         : frame.FunctionName;
@@ -249,7 +270,6 @@ namespace Tools {
             }
 
             EditorGUILayout.EndVertical();
-            EditorGUI.indentLevel--;
         }
 
         private void DrawCategoryTag(AllocationCategory category, AssetType assetType) {
@@ -290,11 +310,19 @@ namespace Tools {
             var filtered = GetFilteredAllocations(trace);
             _cachedTraceRows = SortAllocations(filtered);
 
-            // Pre-format display strings
+            // Pre-format all display data
             int count = _cachedTraceRows.Count;
             _traceRowSizeStr = new string[count];
             _traceRowCallStr = new string[count];
             _traceRowLabelStr = new string[count];
+            _traceRowTagStr = new string[count];
+            _traceRowCtrlStr = new string[count];
+            _traceRowSeverityIcon = new string[count];
+            _traceRowSeverityColor = new Color[count];
+            _traceRowCatColor = new Color[count];
+            _traceRowCtrlColor = new Color[count];
+            _cachedTraceFilteredBytes = 0;
+
             for (int i = 0; i < count; i++) {
                 var alloc = _cachedTraceRows[i];
                 _traceRowSizeStr[i] = VmmapParser.FormatSize(alloc.TotalBytes);
@@ -304,9 +332,24 @@ namespace Tools {
                     : !string.IsNullOrEmpty(alloc.TopEngineFunction)
                         ? CallTreeParser.FormatFunctionName(alloc.TopEngineFunction)
                         : GetFirstMeaningfulFunction(alloc);
+                _traceRowTagStr[i] = alloc.AssetType != AssetType.None
+                    ? $"{alloc.Category}/{alloc.AssetType}"
+                    : alloc.Category.ToString();
+                _traceRowCtrlStr[i] = alloc.Controllability switch {
+                    Controllability.UserControllable => "User",
+                    Controllability.PartiallyControllable => "Partial",
+                    Controllability.EngineOwned => "Engine",
+                    Controllability.SystemOwned => "System",
+                    _ => alloc.Controllability.ToString(),
+                };
+                _traceRowSeverityIcon[i] = GetTraceSeverityIcon(alloc.TotalBytes);
+                _traceRowSeverityColor[i] = GetTraceSeverityColor(alloc.TotalBytes);
+                _traceRowCatColor[i] = GetCategoryColor(alloc.Category);
+                _traceRowCtrlColor[i] = GetControllabilityColor(alloc.Controllability);
+                _cachedTraceFilteredBytes += alloc.TotalBytes;
             }
 
-            _expandedTraceRows.Clear();
+            _selectedTraceRow = -1;
             return _cachedTraceRows;
         }
 
