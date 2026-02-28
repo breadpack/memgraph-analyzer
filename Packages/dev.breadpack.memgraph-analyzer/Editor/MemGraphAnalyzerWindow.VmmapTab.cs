@@ -15,6 +15,12 @@ namespace Tools {
         private VmmapSortColumn _vmmapSortColumn = VmmapSortColumn.Resident;
         private bool _vmmapSortAscending;
 
+        // === Vmmap cache ===
+        private List<VmmapSummaryRow> _cachedVmmapRows;
+        private (string filter, VmmapSortColumn sortCol, bool sortAsc) _cachedVmmapKey;
+        private List<VmmapRegion> _cachedVmmapDetailedRegions;
+        private string _cachedVmmapDetailedFilter;
+
         private static readonly Dictionary<string, string> RegionDescriptions = new() {
             { "__TEXT", "Executable code (read-only). Shared between processes. Usually not a concern." },
             { "__DATA", "Global/static variables. Writable. Includes ObjC metadata." },
@@ -90,8 +96,8 @@ namespace Tools {
             DrawVmmapSortButton("Count", VmmapSortColumn.Count, 50);
             EditorGUILayout.EndHorizontal();
 
-            // Data
-            var rows = GetFilteredVmmapRows();
+            // Data (cached)
+            var rows = GetFilteredVmmapRowsCached();
 
             _vmmapScrollPos = EditorGUILayout.BeginScrollView(_vmmapScrollPos);
 
@@ -146,13 +152,7 @@ namespace Tools {
 
             _vmmapScrollPos = EditorGUILayout.BeginScrollView(_vmmapScrollPos);
 
-            var regions = _report.Vmmap.Regions;
-            if (!string.IsNullOrEmpty(_vmmapFilter)) {
-                regions = regions.Where(r =>
-                    (r.RegionType != null && r.RegionType.IndexOf(_vmmapFilter, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                    (r.Detail != null && r.Detail.IndexOf(_vmmapFilter, StringComparison.OrdinalIgnoreCase) >= 0)
-                ).ToList();
-            }
+            var regions = GetFilteredVmmapDetailedCached();
 
             foreach (var region in regions) {
                 EditorGUILayout.BeginHorizontal();
@@ -168,6 +168,18 @@ namespace Tools {
             EditorGUILayout.EndScrollView();
 
             GUILayout.Label($"{regions.Count} regions displayed", _mutedStyle);
+        }
+
+        #region Caching
+
+        private List<VmmapSummaryRow> GetFilteredVmmapRowsCached() {
+            var key = (_vmmapFilter, _vmmapSortColumn, _vmmapSortAscending);
+            if (_cachedVmmapRows != null && _cachedVmmapKey == key)
+                return _cachedVmmapRows;
+
+            _cachedVmmapKey = key;
+            _cachedVmmapRows = GetFilteredVmmapRows();
+            return _cachedVmmapRows;
         }
 
         private List<VmmapSummaryRow> GetFilteredVmmapRows() {
@@ -202,6 +214,26 @@ namespace Tools {
 
             return rows.ToList();
         }
+
+        private List<VmmapRegion> GetFilteredVmmapDetailedCached() {
+            if (_cachedVmmapDetailedRegions != null && _cachedVmmapDetailedFilter == _vmmapFilter)
+                return _cachedVmmapDetailedRegions;
+
+            _cachedVmmapDetailedFilter = _vmmapFilter;
+
+            if (string.IsNullOrEmpty(_vmmapFilter)) {
+                _cachedVmmapDetailedRegions = _report.Vmmap.Regions;
+            } else {
+                _cachedVmmapDetailedRegions = _report.Vmmap.Regions.Where(r =>
+                    (r.RegionType != null && r.RegionType.IndexOf(_vmmapFilter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (r.Detail != null && r.Detail.IndexOf(_vmmapFilter, StringComparison.OrdinalIgnoreCase) >= 0)
+                ).ToList();
+            }
+
+            return _cachedVmmapDetailedRegions;
+        }
+
+        #endregion
 
         private void DrawVmmapSortButton(string label, VmmapSortColumn column, float width, bool expand = false) {
             var displayLabel = label;
@@ -249,8 +281,8 @@ namespace Tools {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Memory Density:", EditorStyles.boldLabel, GUILayout.Width(120));
-            var style = new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = densityColor } };
-            GUILayout.Label($"{densityLabel} ({density:F1}%)", style, GUILayout.Width(200));
+            _densityLabelStyle.normal.textColor = densityColor;
+            GUILayout.Label($"{densityLabel} ({density:F1}%)", _densityLabelStyle, GUILayout.Width(200));
             GUILayout.Label(
                 $"Resident {VmmapParser.FormatSize(totalResident)} / Virtual {VmmapParser.FormatSize(totalVirtual)}",
                 _mutedStyle);

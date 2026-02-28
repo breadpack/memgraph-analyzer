@@ -56,6 +56,11 @@ namespace Tools {
         private static readonly Color BarUnsafeColor = new(1f, 0.3f, 0.3f, 0.8f);
         private static readonly Color BarUnknownColor = new(0.6f, 0.6f, 0.6f, 0.5f);
         private static readonly Color SelectionColor = new(0.24f, 0.48f, 0.9f, 0.3f);
+        private static readonly Color InfoColor = new(0.6f, 0.8f, 1f, 1f);
+        private static readonly Color ActionabilitySystemColor = new(0.6f, 0.6f, 0.6f, 1f);
+        private static readonly Color ControllabilityEngineColor = new(0.6f, 0.6f, 0.8f, 1f);
+        private static readonly Color ControllabilitySystemColor = new(0.6f, 0.6f, 0.6f, 1f);
+        private static readonly Color ThreadStackColor = new(0.7f, 0.5f, 0.9f, 0.8f);
 
         private void InitStyles() {
             if (_stylesInitialized) return;
@@ -84,6 +89,7 @@ namespace Tools {
 
         private void OnGUI() {
             InitStyles();
+            InitTabStyles();
 
             if (!MemGraphCommandRunner.IsSupported) {
                 EditorGUILayout.HelpBox(
@@ -217,7 +223,7 @@ namespace Tools {
 
         private void StartAnalysis() {
             if (!ValidateFile()) return;
-            _cachedLeakGroups = null;
+            InvalidateAllCaches();
             _selectedHeapRow = -1;
             _addressTraceCache.Clear();
             _report = new MemGraphReport {
@@ -418,7 +424,7 @@ namespace Tools {
                 MemoryOwner.System => BarSystemColor,
                 MemoryOwner.GraphicsDriver => BarGpuColor,
                 MemoryOwner.UnsafeUtility => BarUnsafeColor,
-                MemoryOwner.ThreadStack => new Color(0.7f, 0.5f, 0.9f, 0.8f),
+                MemoryOwner.ThreadStack => ThreadStackColor,
                 _ => BarUnknownColor,
             };
         }
@@ -436,7 +442,7 @@ namespace Tools {
             return severity switch {
                 InsightSeverity.Critical => HealthCriticalColor,
                 InsightSeverity.Warning => HealthWarningColor,
-                InsightSeverity.Info => new Color(0.6f, 0.8f, 1f, 1f),
+                InsightSeverity.Info => InfoColor,
                 _ => Color.white,
             };
         }
@@ -454,7 +460,7 @@ namespace Tools {
             return actionability switch {
                 Actionability.Fixable => HealthGoodColor,
                 Actionability.Monitor => HealthWarningColor,
-                Actionability.SystemOwned => new Color(0.6f, 0.6f, 0.6f, 1f),
+                Actionability.SystemOwned => ActionabilitySystemColor,
                 _ => Color.white,
             };
         }

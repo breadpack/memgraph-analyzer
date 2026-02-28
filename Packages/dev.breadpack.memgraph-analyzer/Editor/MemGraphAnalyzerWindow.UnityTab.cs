@@ -7,8 +7,85 @@ namespace Tools {
     public partial class MemGraphAnalyzerWindow {
         private Vector2 _unityScrollPos;
 
+        // === Unity tab caches ===
+        private bool _unityTabCacheBuilt;
+        private List<KeyValuePair<string, long>> _cachedPluginsSorted;
+        private Dictionary<string, List<HeapAllocation>> _cachedPluginAllocations;
+        private List<HeapAllocation> _cachedUnsafeAllocs;
+        private long _cachedUnsafeTotal;
+        private List<VmmapSummaryRow> _cachedStackRegions;
+        private List<HeapAllocation> _cachedStackAllocs;
+        private long _cachedStackTotal;
+        private List<VmmapSummaryRow> _cachedGpuRegions;
+        private List<HeapAllocation> _cachedGpuAllocs;
+        private long _cachedGpuTotal;
+
+        private void RebuildUnityTabCaches() {
+            if (_unityTabCacheBuilt) return;
+            _unityTabCacheBuilt = true;
+
+            // Plugin breakdown: single O(N) scan to build plugin->allocations map
+            var plugins = _report.Summary.PluginBreakdowns;
+            _cachedPluginsSorted = plugins.OrderByDescending(kv => kv.Value).ToList();
+
+            _cachedPluginAllocations = new Dictionary<string, List<HeapAllocation>>();
+            foreach (var plugin in _cachedPluginsSorted)
+                _cachedPluginAllocations[plugin.Key] = new List<HeapAllocation>();
+
+            // Single pass over all heap allocations for plugin mapping
+            foreach (var alloc in _report.Heap.Allocations) {
+                var pluginName = HeapParser.DetectPluginName(alloc.ClassName, alloc.Binary);
+                if (pluginName != null && _cachedPluginAllocations.TryGetValue(pluginName, out var list))
+                    list.Add(alloc);
+            }
+
+            // Sort each plugin's allocations and keep top 5
+            foreach (var kv in _cachedPluginAllocations) {
+                kv.Value.Sort((a, b) => b.TotalBytes.CompareTo(a.TotalBytes));
+                if (kv.Value.Count > 5)
+                    kv.Value.RemoveRange(5, kv.Value.Count - 5);
+            }
+
+            // Unsafe allocations
+            _cachedUnsafeAllocs = _report.Heap.Allocations
+                .Where(a => a.Owner == MemoryOwner.UnsafeUtility)
+                .OrderByDescending(a => a.TotalBytes)
+                .ToList();
+            _cachedUnsafeTotal = 0;
+            foreach (var a in _cachedUnsafeAllocs)
+                _cachedUnsafeTotal += a.TotalBytes;
+
+            // Stack regions/allocs
+            _cachedStackRegions = _report.Vmmap.Summary
+                .Where(r => r.RegionType != null &&
+                    (r.RegionType.Contains("Stack") || r.RegionType.Contains("STACK")))
+                .ToList();
+            _cachedStackAllocs = _report.Heap.Allocations
+                .Where(a => a.Owner == MemoryOwner.ThreadStack)
+                .ToList();
+            _cachedStackTotal = 0;
+            foreach (var a in _cachedStackAllocs)
+                _cachedStackTotal += a.TotalBytes;
+
+            // GPU regions/allocs
+            _cachedGpuRegions = _report.Vmmap.Summary
+                .Where(r => r.RegionType != null &&
+                    (r.RegionType.Contains("IOKit") || r.RegionType.Contains("IOSurface") ||
+                     r.RegionType.Contains("GPU") || r.RegionType.Contains("CG")))
+                .ToList();
+            _cachedGpuAllocs = _report.Heap.Allocations
+                .Where(a => a.Owner == MemoryOwner.GraphicsDriver)
+                .OrderByDescending(a => a.TotalBytes)
+                .ToList();
+            _cachedGpuTotal = 0;
+            foreach (var a in _cachedGpuAllocs)
+                _cachedGpuTotal += a.TotalBytes;
+        }
+
         private void DrawUnityTab() {
             AnalyzerGuidance.DrawTabHeader("Tracked vs untracked memory, native plugin breakdown, UnsafeUtility, thread stacks, and GPU memory.");
+            RebuildUnityTabCaches();
+
             _unityScrollPos = EditorGUILayout.BeginScrollView(_unityScrollPos);
 
             DrawTrackedVsUntrackedSection();
@@ -75,8 +152,7 @@ namespace Tools {
         }
 
         private void DrawPluginBreakdownSection() {
-            var plugins = _report.Summary.PluginBreakdowns;
-            if (plugins.Count == 0) {
+            if (_cachedPluginsSorted == null || _cachedPluginsSorted.Count == 0) {
                 GUILayout.Label("Native Plugins", _headerStyle);
                 GUILayout.Label("No native plugin allocations detected in heap.", _mutedStyle);
                 return;
@@ -86,10 +162,9 @@ namespace Tools {
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            var sorted = plugins.OrderByDescending(kv => kv.Value).ToList();
-            long maxSize = sorted[0].Value;
+            long maxSize = _cachedPluginsSorted[0].Value;
 
-            foreach (var kv in sorted) {
+            foreach (var kv in _cachedPluginsSorted) {
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label(kv.Key, GUILayout.Width(120));
 
@@ -121,16 +196,11 @@ namespace Tools {
                 EditorGUILayout.EndHorizontal();
             }
 
-            // List top allocations per plugin
+            // List top allocations per plugin (from cache)
             GUILayout.Space(4);
-            foreach (var plugin in sorted) {
-                var allocations = _report.Heap.Allocations
-                    .Where(a => HeapParser.DetectPluginName(a.ClassName, a.Binary) == plugin.Key)
-                    .OrderByDescending(a => a.TotalBytes)
-                    .Take(5)
-                    .ToList();
-
-                if (allocations.Count == 0) continue;
+            foreach (var plugin in _cachedPluginsSorted) {
+                if (!_cachedPluginAllocations.TryGetValue(plugin.Key, out var allocations) || allocations.Count == 0)
+                    continue;
 
                 GUILayout.Label($"  Top allocations for {plugin.Key}:", EditorStyles.miniLabel);
                 foreach (var alloc in allocations) {
@@ -150,23 +220,19 @@ namespace Tools {
                 "Leaks here grow unbounded without manual cleanup.",
                 EditorStyles.wordWrappedMiniLabel);
 
-            var unsafeAllocs = _report.Heap.Allocations
-                .Where(a => a.Owner == MemoryOwner.UnsafeUtility)
-                .OrderByDescending(a => a.TotalBytes)
-                .ToList();
-
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            if (unsafeAllocs.Count == 0) {
+            if (_cachedUnsafeAllocs.Count == 0) {
                 GUILayout.Label("No UnsafeUtility allocations detected.", _successStyle);
             } else {
-                long totalUnsafe = unsafeAllocs.Sum(a => a.TotalBytes);
                 GUILayout.Label(
-                    $"{unsafeAllocs.Count} allocation types | Total: {VmmapParser.FormatSize(totalUnsafe)}",
+                    $"{_cachedUnsafeAllocs.Count} allocation types | Total: {VmmapParser.FormatSize(_cachedUnsafeTotal)}",
                     _warningStyle);
 
                 GUILayout.Space(4);
-                foreach (var alloc in unsafeAllocs.Take(20)) {
+                int displayed = Mathf.Min(20, _cachedUnsafeAllocs.Count);
+                for (int i = 0; i < displayed; i++) {
+                    var alloc = _cachedUnsafeAllocs[i];
                     EditorGUILayout.BeginHorizontal();
                     GUILayout.Label(alloc.ClassName, GUILayout.MinWidth(150));
                     GUILayout.Label(VmmapParser.FormatSize(alloc.TotalBytes), GUILayout.Width(80));
@@ -174,8 +240,8 @@ namespace Tools {
                     EditorGUILayout.EndHorizontal();
                 }
 
-                if (unsafeAllocs.Count > 20) {
-                    GUILayout.Label($"  ... and {unsafeAllocs.Count - 20} more", _mutedStyle);
+                if (_cachedUnsafeAllocs.Count > 20) {
+                    GUILayout.Label($"  ... and {_cachedUnsafeAllocs.Count - 20} more", _mutedStyle);
                 }
             }
 
@@ -189,22 +255,11 @@ namespace Tools {
                 "Check thread count if virtual memory is unexpectedly high.",
                 EditorStyles.wordWrappedMiniLabel);
 
-            // From vmmap summary
-            var stackRegions = _report.Vmmap.Summary
-                .Where(r => r.RegionType != null &&
-                    (r.RegionType.Contains("Stack") || r.RegionType.Contains("STACK")))
-                .ToList();
-
-            // From heap
-            var stackAllocs = _report.Heap.Allocations
-                .Where(a => a.Owner == MemoryOwner.ThreadStack)
-                .ToList();
-
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            if (stackRegions.Count > 0) {
+            if (_cachedStackRegions.Count > 0) {
                 GUILayout.Label("vmmap Regions:", EditorStyles.miniLabel);
-                foreach (var region in stackRegions) {
+                foreach (var region in _cachedStackRegions) {
                     EditorGUILayout.BeginHorizontal();
                     GUILayout.Label(region.RegionType, GUILayout.Width(150));
                     GUILayout.Label($"Virtual: {VmmapParser.FormatSize(region.VirtualSize)}", GUILayout.Width(120));
@@ -214,13 +269,12 @@ namespace Tools {
                 }
             }
 
-            if (stackAllocs.Count > 0) {
+            if (_cachedStackAllocs.Count > 0) {
                 GUILayout.Label("Heap Allocations:", EditorStyles.miniLabel);
-                long totalStack = stackAllocs.Sum(a => a.TotalBytes);
-                GUILayout.Label($"  Total: {VmmapParser.FormatSize(totalStack)}", _mutedStyle);
+                GUILayout.Label($"  Total: {VmmapParser.FormatSize(_cachedStackTotal)}", _mutedStyle);
             }
 
-            if (stackRegions.Count == 0 && stackAllocs.Count == 0) {
+            if (_cachedStackRegions.Count == 0 && _cachedStackAllocs.Count == 0) {
                 GUILayout.Label("No thread stack data found.", _mutedStyle);
             }
 
@@ -234,24 +288,11 @@ namespace Tools {
                 "Reduce via texture compression, resolution scaling, render target pooling.",
                 EditorStyles.wordWrappedMiniLabel);
 
-            // From vmmap
-            var gpuRegions = _report.Vmmap.Summary
-                .Where(r => r.RegionType != null &&
-                    (r.RegionType.Contains("IOKit") || r.RegionType.Contains("IOSurface") ||
-                     r.RegionType.Contains("GPU") || r.RegionType.Contains("CG")))
-                .ToList();
-
-            // From heap
-            var gpuAllocs = _report.Heap.Allocations
-                .Where(a => a.Owner == MemoryOwner.GraphicsDriver)
-                .OrderByDescending(a => a.TotalBytes)
-                .ToList();
-
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            if (gpuRegions.Count > 0) {
+            if (_cachedGpuRegions.Count > 0) {
                 GUILayout.Label("vmmap Regions:", EditorStyles.miniLabel);
-                foreach (var region in gpuRegions) {
+                foreach (var region in _cachedGpuRegions) {
                     EditorGUILayout.BeginHorizontal();
                     GUILayout.Label(region.RegionType, GUILayout.Width(150));
                     GUILayout.Label($"Virtual: {VmmapParser.FormatSize(region.VirtualSize)}", GUILayout.Width(120));
@@ -260,11 +301,12 @@ namespace Tools {
                 }
             }
 
-            if (gpuAllocs.Count > 0) {
-                long totalGpu = gpuAllocs.Sum(a => a.TotalBytes);
-                GUILayout.Label($"Heap Allocations: {VmmapParser.FormatSize(totalGpu)}", EditorStyles.miniLabel);
+            if (_cachedGpuAllocs.Count > 0) {
+                GUILayout.Label($"Heap Allocations: {VmmapParser.FormatSize(_cachedGpuTotal)}", EditorStyles.miniLabel);
 
-                foreach (var alloc in gpuAllocs.Take(10)) {
+                int displayed = Mathf.Min(10, _cachedGpuAllocs.Count);
+                for (int i = 0; i < displayed; i++) {
+                    var alloc = _cachedGpuAllocs[i];
                     EditorGUILayout.BeginHorizontal();
                     GUILayout.Label(alloc.ClassName, GUILayout.MinWidth(150));
                     GUILayout.Label(VmmapParser.FormatSize(alloc.TotalBytes), GUILayout.Width(80));
@@ -273,7 +315,7 @@ namespace Tools {
                 }
             }
 
-            if (gpuRegions.Count == 0 && gpuAllocs.Count == 0) {
+            if (_cachedGpuRegions.Count == 0 && _cachedGpuAllocs.Count == 0) {
                 GUILayout.Label("No graphics/GPU memory data found.", _mutedStyle);
             }
 

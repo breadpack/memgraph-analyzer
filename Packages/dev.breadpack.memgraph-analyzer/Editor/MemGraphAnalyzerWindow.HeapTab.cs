@@ -25,6 +25,21 @@ namespace Tools {
         private static readonly Color BarFillColor = new(0.35f, 0.65f, 1f, 0.7f);
         private static readonly Color UserCodeColor = new(0.3f, 0.85f, 0.3f, 1f);
 
+        // === Heap row cache ===
+        private List<HeapAllocation> _cachedHeapRows;
+        private (string filter, int ownerFilter, int topN, HeapSortColumn sortCol, bool sortAsc) _cachedHeapKey;
+        private string[] _heapRowCountStr;
+        private string[] _heapRowTotalStr;
+        private string[] _heapRowAvgStr;
+
+        // === Suspicious patterns cache ===
+        private List<HeapAllocation> _cachedLargeAvg;
+        private List<HeapAllocation> _cachedPoolCandidates;
+        private int _cachedSingleCountTypes = -1;
+
+        // === Virtual scroll ===
+        private const float HeapRowHeight = 20f;
+
         private void DrawHeapTab() {
             AnalyzerGuidance.DrawTabHeader("Heap allocations by class with owner attribution. Click a row for size distribution and call stacks.");
             DrawHeapSuspiciousPatterns();
@@ -53,12 +68,22 @@ namespace Tools {
             GUILayout.Label("Action", EditorStyles.toolbarButton, GUILayout.Width(60));
             EditorGUILayout.EndHorizontal();
 
-            // Data
-            var rows = GetFilteredHeapRows();
+            // Data (cached)
+            var rows = GetFilteredHeapRowsCached();
+            int rowCount = rows.Count;
 
+            // Virtual scroll: only render visible rows
             _heapScrollPos = EditorGUILayout.BeginScrollView(_heapScrollPos);
 
-            for (int i = 0; i < rows.Count; i++) {
+            int firstVisible = Mathf.Max(0, Mathf.FloorToInt(_heapScrollPos.y / HeapRowHeight) - 1);
+            int visibleCount = Mathf.CeilToInt(position.height / HeapRowHeight) + 2;
+            int lastVisible = Mathf.Min(rowCount - 1, firstVisible + visibleCount);
+
+            // Top spacer
+            if (firstVisible > 0)
+                GUILayout.Space(firstVisible * HeapRowHeight);
+
+            for (int i = firstVisible; i <= lastVisible && i < rowCount; i++) {
                 var alloc = rows[i];
                 bool isSelected = _selectedHeapRow == i;
 
@@ -75,9 +100,9 @@ namespace Tools {
                     Repaint();
                 }
 
-                GUILayout.Label(alloc.Count.ToString("N0"), GUILayout.Width(60));
-                GUILayout.Label(VmmapParser.FormatSize(alloc.TotalBytes), GUILayout.Width(90));
-                GUILayout.Label(VmmapParser.FormatSize(alloc.AverageSize), GUILayout.Width(70));
+                GUILayout.Label(_heapRowCountStr[i], GUILayout.Width(60));
+                GUILayout.Label(_heapRowTotalStr[i], GUILayout.Width(90));
+                GUILayout.Label(_heapRowAvgStr[i], GUILayout.Width(70));
                 GUILayout.Label(alloc.ClassName, GUILayout.MinWidth(100));
 
                 var ownerStyle = alloc.Owner switch {
@@ -90,20 +115,23 @@ namespace Tools {
                 GUILayout.Label(HeapParser.GetOwnerDisplayName(alloc.Owner), ownerStyle, GUILayout.Width(100));
 
                 var actionability = HeapParser.GetActionability(alloc);
-                var actStyle = new GUIStyle(EditorStyles.miniLabel) {
-                    normal = { textColor = GetActionabilityColor(actionability) }
-                };
-                GUILayout.Label(HeapParser.GetActionabilityLabel(actionability), actStyle, GUILayout.Width(60));
+                GUILayout.Label(HeapParser.GetActionabilityLabel(actionability),
+                    GetCachedActionabilityStyle(actionability), GUILayout.Width(60));
 
                 EditorGUILayout.EndHorizontal();
-
-                // Detail panel inline below selected row
-                if (isSelected) {
-                    DrawHeapDetail(alloc);
-                }
             }
 
+            // Bottom spacer
+            int remaining = rowCount - lastVisible - 1;
+            if (remaining > 0)
+                GUILayout.Space(remaining * HeapRowHeight);
+
             EditorGUILayout.EndScrollView();
+
+            // Detail panel below scroll view for selected row
+            if (_selectedHeapRow >= 0 && _selectedHeapRow < rowCount) {
+                DrawHeapDetail(rows[_selectedHeapRow]);
+            }
 
             // Footer
             EditorGUILayout.BeginHorizontal();
@@ -221,10 +249,7 @@ namespace Tools {
                 GUILayout.Space(16);
 
                 if (isUser) {
-                    var userStyle = new GUIStyle(EditorStyles.label) {
-                        normal = { textColor = UserCodeColor }
-                    };
-                    GUILayout.Label(displayName, userStyle, GUILayout.MinWidth(200));
+                    GUILayout.Label(displayName, _userCodeStyle, GUILayout.MinWidth(200));
                     userCodeEntries.Add(caller);
                 } else {
                     GUILayout.Label(displayName, GUILayout.MinWidth(200));
@@ -271,10 +296,7 @@ namespace Tools {
                 GUILayout.Label("->", _mutedStyle, GUILayout.Width(20));
 
                 if (isUser) {
-                    var userStyle = new GUIStyle(EditorStyles.label) {
-                        normal = { textColor = UserCodeColor }
-                    };
-                    GUILayout.Label(displayName, userStyle, GUILayout.MinWidth(180));
+                    GUILayout.Label(displayName, _userCodeStyle, GUILayout.MinWidth(180));
                 } else {
                     GUILayout.Label(displayName, GUILayout.MinWidth(180));
                 }
@@ -292,11 +314,8 @@ namespace Tools {
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(16);
 
-                var codeStyle = new GUIStyle(EditorStyles.label) {
-                    normal = { textColor = UserCodeColor }
-                };
-                GUILayout.Label("[C#]", codeStyle, GUILayout.Width(30));
-                GUILayout.Label(displayName, codeStyle, GUILayout.MinWidth(200));
+                GUILayout.Label("[C#]", _userCodeStyle, GUILayout.Width(30));
+                GUILayout.Label(displayName, _userCodeStyle, GUILayout.MinWidth(200));
                 GUILayout.Label($"= {VmmapParser.FormatSize(entry.TotalBytes)}", GUILayout.Width(100));
 
                 EditorGUILayout.EndHorizontal();
@@ -323,7 +342,30 @@ namespace Tools {
             return $"{size} B";
         }
 
-        #region Filtering and Sorting
+        #region Filtering and Sorting (Cached)
+
+        private List<HeapAllocation> GetFilteredHeapRowsCached() {
+            var key = (_heapFilter, _heapOwnerFilter, _heapTopN, _heapSortColumn, _heapSortAscending);
+            if (_cachedHeapRows != null && _cachedHeapKey == key)
+                return _cachedHeapRows;
+
+            _cachedHeapKey = key;
+            _cachedHeapRows = GetFilteredHeapRows();
+
+            // Pre-format display strings
+            int count = _cachedHeapRows.Count;
+            _heapRowCountStr = new string[count];
+            _heapRowTotalStr = new string[count];
+            _heapRowAvgStr = new string[count];
+            for (int i = 0; i < count; i++) {
+                var alloc = _cachedHeapRows[i];
+                _heapRowCountStr[i] = alloc.Count.ToString("N0");
+                _heapRowTotalStr[i] = VmmapParser.FormatSize(alloc.TotalBytes);
+                _heapRowAvgStr[i] = VmmapParser.FormatSize(alloc.AverageSize);
+            }
+
+            return _cachedHeapRows;
+        }
 
         private List<HeapAllocation> GetFilteredHeapRows() {
             var rows = _report.Heap.Allocations.AsEnumerable();
@@ -378,35 +420,38 @@ namespace Tools {
 
         #endregion
 
-        #region Suspicious Patterns
+        #region Suspicious Patterns (Cached)
 
         private void DrawHeapSuspiciousPatterns() {
             var allocs = _report.Heap.Allocations;
             if (allocs.Count == 0) return;
 
-            var largeAvg = allocs.Where(a => a.AverageSize > 10L * 1024 * 1024).ToList();
-            var poolCandidates = allocs.Where(a =>
-                a.Count > 1000 && a.AverageSize < 1024 && a.TotalBytes > 1024 * 1024).ToList();
+            // Build caches once
+            if (_cachedSingleCountTypes < 0) {
+                _cachedLargeAvg = allocs.Where(a => a.AverageSize > 10L * 1024 * 1024).ToList();
+                _cachedPoolCandidates = allocs.Where(a =>
+                    a.Count > 1000 && a.AverageSize < 1024 && a.TotalBytes > 1024 * 1024).ToList();
+                _cachedSingleCountTypes = allocs.Count(a => a.Count == 1);
+            }
 
-            int singleCountTypes = allocs.Count(a => a.Count == 1);
-            bool highFragmentation = allocs.Count > 10 && singleCountTypes > allocs.Count / 2;
+            bool highFragmentation = allocs.Count > 10 && _cachedSingleCountTypes > allocs.Count / 2;
 
-            if (largeAvg.Count == 0 && poolCandidates.Count == 0 && !highFragmentation) return;
+            if (_cachedLargeAvg.Count == 0 && _cachedPoolCandidates.Count == 0 && !highFragmentation) return;
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             GUILayout.Label("Suspicious Patterns", EditorStyles.boldLabel);
 
-            if (largeAvg.Count > 0) {
-                GUILayout.Label($"[!] Large Allocations ({largeAvg.Count} types with avg > 10 MB):", _warningStyle);
-                foreach (var a in largeAvg.Take(3)) {
+            if (_cachedLargeAvg.Count > 0) {
+                GUILayout.Label($"[!] Large Allocations ({_cachedLargeAvg.Count} types with avg > 10 MB):", _warningStyle);
+                foreach (var a in _cachedLargeAvg.Take(3)) {
                     GUILayout.Label($"    {a.ClassName}: avg {VmmapParser.FormatSize(a.AverageSize)}, " +
                         $"total {VmmapParser.FormatSize(a.TotalBytes)}", EditorStyles.miniLabel);
                 }
             }
 
-            if (poolCandidates.Count > 0) {
-                GUILayout.Label($"[i] Pooling Candidates ({poolCandidates.Count} types, many small allocs):", _warningStyle);
-                foreach (var a in poolCandidates.Take(3)) {
+            if (_cachedPoolCandidates.Count > 0) {
+                GUILayout.Label($"[i] Pooling Candidates ({_cachedPoolCandidates.Count} types, many small allocs):", _warningStyle);
+                foreach (var a in _cachedPoolCandidates.Take(3)) {
                     GUILayout.Label($"    {a.ClassName}: {a.Count:N0} allocs, avg {VmmapParser.FormatSize(a.AverageSize)}",
                         EditorStyles.miniLabel);
                 }
@@ -414,7 +459,7 @@ namespace Tools {
 
             if (highFragmentation) {
                 GUILayout.Label(
-                    $"[!] Type Fragmentation: {singleCountTypes}/{allocs.Count} types have only 1 allocation. " +
+                    $"[!] Type Fragmentation: {_cachedSingleCountTypes}/{allocs.Count} types have only 1 allocation. " +
                     "Excessive type diversity may indicate over-allocation.", _warningStyle);
             }
 

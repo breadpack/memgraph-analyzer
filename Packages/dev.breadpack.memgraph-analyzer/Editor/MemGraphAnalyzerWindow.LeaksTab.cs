@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,6 +9,12 @@ namespace Tools {
         private bool _showLeaksRaw;
         private bool _showLeaksGrouped;
         private List<LeakGroup> _cachedLeakGroups;
+
+        // === Leaks next-steps cache ===
+        private bool _leaksNextStepsCached;
+        private bool _leaksNextStepsHasUnity;
+        private bool _leaksNextStepsHasPlugin;
+        private bool _leaksNextStepsHasUnsafe;
 
         private void DrawLeaksTab() {
             AnalyzerGuidance.DrawTabHeader("Results from the leaks command. Group by type or browse individually with stack traces.");
@@ -131,27 +136,41 @@ namespace Tools {
             var leaks = _report.Leaks.Leaks;
             if (leaks.Count == 0) return;
 
-            bool hasUnity = leaks.Any(l => l.Owner == MemoryOwner.Unity);
-            bool hasPlugin = leaks.Any(l => l.Owner == MemoryOwner.NativePlugin);
-            bool hasUnsafe = leaks.Any(l => l.Owner == MemoryOwner.UnsafeUtility);
+            // Single-pass cache for owner booleans
+            if (!_leaksNextStepsCached) {
+                _leaksNextStepsCached = true;
+                _leaksNextStepsHasUnity = false;
+                _leaksNextStepsHasPlugin = false;
+                _leaksNextStepsHasUnsafe = false;
 
-            if (!hasUnity && !hasPlugin && !hasUnsafe) return;
+                foreach (var l in leaks) {
+                    switch (l.Owner) {
+                        case MemoryOwner.Unity: _leaksNextStepsHasUnity = true; break;
+                        case MemoryOwner.NativePlugin: _leaksNextStepsHasPlugin = true; break;
+                        case MemoryOwner.UnsafeUtility: _leaksNextStepsHasUnsafe = true; break;
+                    }
+                    if (_leaksNextStepsHasUnity && _leaksNextStepsHasPlugin && _leaksNextStepsHasUnsafe)
+                        break;
+                }
+            }
+
+            if (!_leaksNextStepsHasUnity && !_leaksNextStepsHasPlugin && !_leaksNextStepsHasUnsafe) return;
 
             GUILayout.Space(4);
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             GUILayout.Label("Next Steps", EditorStyles.boldLabel);
 
-            if (hasUnity) {
+            if (_leaksNextStepsHasUnity) {
                 GUILayout.Label(
                     ">> Unity-owned leaks: Check for unreleased textures, meshes, or assets. " +
                     "Verify Destroy() calls match Instantiate().", _warningStyle);
             }
-            if (hasPlugin) {
+            if (_leaksNextStepsHasPlugin) {
                 GUILayout.Label(
                     ">> Plugin leaks: Report to vendor with stack traces. " +
                     "Check plugin version updates for fixes.", _warningStyle);
             }
-            if (hasUnsafe) {
+            if (_leaksNextStepsHasUnsafe) {
                 GUILayout.Label(
                     ">> UnsafeUtility leaks: Verify UnsafeUtility.Malloc/Free pairs. " +
                     "Check NativeArray/NativeList disposal.", _errorStyle);

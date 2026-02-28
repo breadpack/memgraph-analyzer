@@ -17,6 +17,14 @@ namespace Tools {
         private static readonly Color BarEngineColor = new(0.95f, 0.7f, 0.3f, 0.8f);
         private static readonly Color BarSystemFwColor = new(0.6f, 0.6f, 0.6f, 0.7f);
         private static readonly Color BarGCHeapColor = new(0.85f, 0.4f, 0.85f, 0.8f);
+        private static readonly Color TraceSeverityInfoColor = new(0.6f, 0.8f, 1f, 1f);
+
+        // === Trace row cache ===
+        private List<TracedAllocation> _cachedTraceRows;
+        private (AllocationCategory cat, Controllability ctrl, AssetType asset, int sort) _cachedTraceKey;
+        private string[] _traceRowSizeStr;
+        private string[] _traceRowCallStr;
+        private string[] _traceRowLabelStr;
 
         private void DrawAllocationTraceTab() {
             AnalyzerGuidance.DrawTabHeader(
@@ -87,7 +95,7 @@ namespace Tools {
             // Category filter
             GUILayout.Label("Category:", GUILayout.Width(58));
             var catOptions = new[] { "All", "Asset", "GameLogic", "EngineInternal", "SystemFramework", "GCHeap" };
-            int catIdx = (int)_traceFilterCategory + 1; // -1 → 0 (All)
+            int catIdx = (int)_traceFilterCategory + 1; // -1 -> 0 (All)
             int newCatIdx = EditorGUILayout.Popup(catIdx, catOptions, EditorStyles.toolbarPopup, GUILayout.Width(100));
             _traceFilterCategory = (AllocationCategory)(newCatIdx - 1);
 
@@ -123,11 +131,12 @@ namespace Tools {
         }
 
         private void DrawTraceList(AllocationTraceResult trace) {
-            var filtered = GetFilteredAllocations(trace);
-            var sorted = SortAllocations(filtered);
+            var sorted = GetFilteredTraceRowsCached(trace);
 
-            // Stats
-            long filteredBytes = sorted.Sum(a => a.TotalBytes);
+            // Stats (use cached pre-computed sum)
+            long filteredBytes = 0;
+            foreach (var a in sorted)
+                filteredBytes += a.TotalBytes;
             int filteredCount = sorted.Count;
             EditorGUILayout.LabelField(
                 $"Showing {filteredCount} allocations ({VmmapParser.FormatSize(filteredBytes)}) " +
@@ -164,21 +173,16 @@ namespace Tools {
             GUILayout.Label(severityIcon, EditorStyles.boldLabel, GUILayout.Width(24));
             GUI.contentColor = prevColor;
 
-            // Main label - top function or summary
-            string label = !string.IsNullOrEmpty(alloc.TopUserFunction)
-                ? alloc.TopUserFunction
-                : !string.IsNullOrEmpty(alloc.TopEngineFunction)
-                    ? CallTreeParser.FormatFunctionName(alloc.TopEngineFunction)
-                    : GetFirstMeaningfulFunction(alloc);
-            GUILayout.Label(label, EditorStyles.boldLabel, GUILayout.MinWidth(200));
+            // Main label - use pre-formatted string
+            GUILayout.Label(_traceRowLabelStr[index], EditorStyles.boldLabel, GUILayout.MinWidth(200));
 
             GUILayout.FlexibleSpace();
 
-            // Size
-            GUILayout.Label(VmmapParser.FormatSize(alloc.TotalBytes), GUILayout.Width(70));
+            // Size (pre-formatted)
+            GUILayout.Label(_traceRowSizeStr[index], GUILayout.Width(70));
 
-            // Call count
-            GUILayout.Label($"{alloc.CallCount} call{(alloc.CallCount != 1 ? "s" : "")}", _mutedStyle, GUILayout.Width(65));
+            // Call count (pre-formatted)
+            GUILayout.Label(_traceRowCallStr[index], _mutedStyle, GUILayout.Width(65));
 
             EditorGUILayout.EndHorizontal();
 
@@ -275,7 +279,36 @@ namespace Tools {
             GUI.backgroundColor = prevBg;
         }
 
-        #region Helpers
+        #region Helpers (Cached)
+
+        private List<TracedAllocation> GetFilteredTraceRowsCached(AllocationTraceResult trace) {
+            var key = (_traceFilterCategory, _traceFilterControl, _traceFilterAssetType, _traceSortMode);
+            if (_cachedTraceRows != null && _cachedTraceKey == key)
+                return _cachedTraceRows;
+
+            _cachedTraceKey = key;
+            var filtered = GetFilteredAllocations(trace);
+            _cachedTraceRows = SortAllocations(filtered);
+
+            // Pre-format display strings
+            int count = _cachedTraceRows.Count;
+            _traceRowSizeStr = new string[count];
+            _traceRowCallStr = new string[count];
+            _traceRowLabelStr = new string[count];
+            for (int i = 0; i < count; i++) {
+                var alloc = _cachedTraceRows[i];
+                _traceRowSizeStr[i] = VmmapParser.FormatSize(alloc.TotalBytes);
+                _traceRowCallStr[i] = $"{alloc.CallCount} call{(alloc.CallCount != 1 ? "s" : "")}";
+                _traceRowLabelStr[i] = !string.IsNullOrEmpty(alloc.TopUserFunction)
+                    ? alloc.TopUserFunction
+                    : !string.IsNullOrEmpty(alloc.TopEngineFunction)
+                        ? CallTreeParser.FormatFunctionName(alloc.TopEngineFunction)
+                        : GetFirstMeaningfulFunction(alloc);
+            }
+
+            _expandedTraceRows.Clear();
+            return _cachedTraceRows;
+        }
 
         private List<TracedAllocation> GetFilteredAllocations(AllocationTraceResult trace) {
             var result = new List<TracedAllocation>();
@@ -319,7 +352,7 @@ namespace Tools {
         private static Color GetTraceSeverityColor(long totalBytes) {
             if (totalBytes >= 50L * 1024 * 1024) return HealthCriticalColor;
             if (totalBytes >= 10L * 1024 * 1024) return HealthWarningColor;
-            return new Color(0.6f, 0.8f, 1f, 1f);
+            return TraceSeverityInfoColor;
         }
 
         private static Color GetCategoryColor(AllocationCategory category) {
@@ -337,8 +370,8 @@ namespace Tools {
             return ctrl switch {
                 Controllability.UserControllable => HealthGoodColor,
                 Controllability.PartiallyControllable => HealthWarningColor,
-                Controllability.EngineOwned => new Color(0.6f, 0.6f, 0.8f, 1f),
-                Controllability.SystemOwned => new Color(0.6f, 0.6f, 0.6f, 1f),
+                Controllability.EngineOwned => ControllabilityEngineColor,
+                Controllability.SystemOwned => ControllabilitySystemColor,
                 _ => Color.white,
             };
         }

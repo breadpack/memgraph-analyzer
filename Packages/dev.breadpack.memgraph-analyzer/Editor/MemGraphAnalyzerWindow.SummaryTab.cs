@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -7,6 +8,10 @@ namespace Tools {
     public partial class MemGraphAnalyzerWindow {
         private Vector2 _summaryScrollPos;
         private int _selectedDeviceIndex = iOSDeviceProfiles.DefaultIndex;
+
+        // === Summary tab caches ===
+        private List<MemoryCategoryBreakdown> _cachedTopCategories;
+        private List<KeyValuePair<MemoryOwner, long>> _cachedOwnersSorted;
 
         private void DrawSummaryTab() {
             AnalyzerGuidance.DrawTabHeader("Memory health, iOS device comparison, key metrics, category breakdown, and optimization guide.");
@@ -215,12 +220,13 @@ namespace Tools {
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label(label, GUILayout.Width(160));
             if (value > 1024) {
-                var style = new GUIStyle(EditorStyles.boldLabel);
                 if (value > critThreshold)
-                    style.normal.textColor = HealthCriticalColor;
+                    _metricHealthStyle.normal.textColor = HealthCriticalColor;
                 else if (value > warnThreshold)
-                    style.normal.textColor = HealthWarningColor;
-                GUILayout.Label(VmmapParser.FormatSize(value), style, GUILayout.Width(120));
+                    _metricHealthStyle.normal.textColor = HealthWarningColor;
+                else
+                    _metricHealthStyle.normal.textColor = EditorStyles.boldLabel.normal.textColor;
+                GUILayout.Label(VmmapParser.FormatSize(value), _metricHealthStyle, GUILayout.Width(120));
                 GUILayout.Label($"({value:N0} bytes)", _mutedStyle);
             } else {
                 GUILayout.Label(value.ToString("N0"), EditorStyles.boldLabel);
@@ -241,11 +247,13 @@ namespace Tools {
 
             GUILayout.Label("Resident Memory by Category (vmmap)", EditorStyles.boldLabel);
 
-            // Top 10 categories by size
-            var topCategories = categories.OrderByDescending(c => c.Size).Take(10).ToList();
-            long maxSize = topCategories.Count > 0 ? topCategories[0].Size : 1;
+            // Cache sorted top categories
+            if (_cachedTopCategories == null)
+                _cachedTopCategories = categories.OrderByDescending(c => c.Size).Take(10).ToList();
 
-            foreach (var cat in topCategories) {
+            long maxSize = _cachedTopCategories.Count > 0 ? _cachedTopCategories[0].Size : 1;
+
+            foreach (var cat in _cachedTopCategories) {
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label(cat.Category, GUILayout.Width(180));
 
@@ -271,10 +279,13 @@ namespace Tools {
 
             GUILayout.Label("Heap Memory by Owner", EditorStyles.boldLabel);
 
-            var sorted = owners.OrderByDescending(kv => kv.Value).ToList();
-            long maxSize = sorted.Count > 0 ? sorted[0].Value : 1;
+            // Cache sorted owners
+            if (_cachedOwnersSorted == null)
+                _cachedOwnersSorted = owners.OrderByDescending(kv => kv.Value).ToList();
 
-            foreach (var kv in sorted) {
+            long maxSize = _cachedOwnersSorted.Count > 0 ? _cachedOwnersSorted[0].Value : 1;
+
+            foreach (var kv in _cachedOwnersSorted) {
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Label(HeapParser.GetOwnerDisplayName(kv.Key), GUILayout.Width(130));
 
