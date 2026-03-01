@@ -97,6 +97,15 @@ namespace Tools {
                     sb.AppendLine($"| {i + 1} | {a.CallCount} | {Fmt(a.TotalBytes)} | {typeLabel} | {a.AssetType} | {SummarizeName(func, 60)} |");
                 }
                 sb.AppendLine();
+
+                // LOH segment detection: multiple 16MB allocations indicate .NET LOH expansion
+                int count16MB = userControllable.Count(a => a.TotalBytes == 16L * 1024 * 1024);
+                if (count16MB >= 3) {
+                    sb.AppendLine($"> **LOH Note**: {count16MB} allocations are exactly 16 MB — " +
+                        ".NET LOH allocates in 16 MB segments. These are GC-managed heap expansions, " +
+                        "not individual large objects. To reduce: lower peak managed memory so fewer LOH segments are needed.");
+                    sb.AppendLine();
+                }
             }
 
             return sb.ToString();
@@ -200,6 +209,10 @@ namespace Tools {
                     hasContent = true;
                 }
                 sb.AppendLine("## Top Unity Allocations");
+                sb.AppendLine("> These are Unity engine-internal allocations (C++ runtime). " +
+                    "They are not directly reducible from C# code. Use this table to understand " +
+                    "Unity's memory overhead. For actionable optimizations, see 04_AllocationTrace.");
+                sb.AppendLine();
                 sb.AppendLine("| # | Count | Bytes | Avg | Class |");
                 sb.AppendLine("|---|---|---|---|---|");
                 for (int i = 0; i < unityAllocs.Count; i++) {

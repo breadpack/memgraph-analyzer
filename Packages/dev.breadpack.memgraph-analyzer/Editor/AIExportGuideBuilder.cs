@@ -126,8 +126,8 @@ namespace Tools {
             sb.AppendLine("|---|---|---|");
             foreach (var doc in documents) {
                 if (doc.Type == AIDocumentType.Guide) continue; // skip self
-                string status = doc.IsAvailable ? doc.Highlight : "N/A — no data";
-                sb.AppendLine($"| {doc.FileName} | ~{doc.EstimatedTokens:N0} | {status} |");
+                if (!doc.IsAvailable) continue; // hide N/A documents to reduce noise
+                sb.AppendLine($"| {doc.FileName} | ~{doc.EstimatedTokens:N0} | {doc.Highlight} |");
             }
             sb.AppendLine();
         }

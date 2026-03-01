@@ -155,6 +155,11 @@ namespace Tools {
                 sb.AppendLine();
             }
 
+            sb.AppendLine("> **Cross-reference**: 02_Heap shows allocations by malloc class name. " +
+                "04_AllocationTrace shows the same memory classified by C# call stack with controllability assessment. " +
+                "Use both together: Heap for raw sizes, AllocationTrace for actionable optimization targets.");
+            sb.AppendLine();
+
             // Related Issues
             AppendRelatedIssues(sb, report, InsightCategory.MemoryPressure, InsightCategory.Untracked, InsightCategory.Fragmentation);
 
@@ -218,14 +223,29 @@ namespace Tools {
             if (leaks.Leaks.Count == 0 || groups.Count == 0) {
                 sb.AppendLine();
                 sb.AppendLine("*Individual leak entries were not parsed (summary-only data available).*");
-                sb.AppendLine("Use `leaks --fullContent` on the .memgraph to get detailed per-leak information.");
                 sb.AppendLine();
-                sb.AppendLine("## General Remediation");
-                sb.AppendLine("- Run the leaks tool with stack trace output for detailed analysis");
-                sb.AppendLine("- Check for unreleased Objective-C objects and CF types");
-                sb.AppendLine("- Verify Destroy() <-> Instantiate() pairing for Unity objects");
-                sb.AppendLine("- Review AssetBundle unloading on scene transitions");
-                sb.AppendLine("- Check NativeArray/NativeList disposal (UnsafeUtility)");
+                sb.AppendLine("## Next Steps");
+                sb.AppendLine("To get actionable leak details, re-capture with:");
+                sb.AppendLine("```bash");
+                sb.AppendLine("leaks --fullContent <pid> > leaks_full.txt");
+                sb.AppendLine("```");
+                sb.AppendLine();
+                sb.AppendLine("## Severity Assessment");
+                long leakPct = report.Heap.TotalBytes > 0
+                    ? report.Leaks.TotalLeakBytes * 100 / report.Heap.TotalBytes : 0;
+                string severity = leakPct > 10 ? "HIGH" : leakPct > 3 ? "MODERATE" : "LOW";
+                sb.AppendLine($"- Leak ratio: {Fmt(report.Leaks.TotalLeakBytes)} / {Fmt(report.Heap.TotalBytes)} heap = {leakPct}% ({severity})");
+                sb.AppendLine($"- Count: {report.Leaks.TotalLeakCount} leaked objects");
+                if (leakPct <= 3)
+                    sb.AppendLine("- At this ratio, leaks are unlikely to be the primary memory concern. Prioritize heap/allocation optimization.");
+                else
+                    sb.AppendLine("- This leak ratio is significant. Re-capture with `leaks --fullContent` to identify specific sources.");
+                sb.AppendLine();
+                sb.AppendLine("## Common Leak Sources (Unity iOS)");
+                sb.AppendLine("- Unreleased Objective-C objects / CF types at native bridge");
+                sb.AppendLine("- Missing Destroy() for Instantiate()'d Unity objects");
+                sb.AppendLine("- AssetBundle not unloaded on scene transitions");
+                sb.AppendLine("- NativeArray/NativeList not Disposed (UnsafeUtility)");
                 sb.AppendLine();
                 return sb.ToString();
             }
@@ -359,6 +379,23 @@ namespace Tools {
                     $"| **{Fmt(t.DirtySize)}** | **{Fmt(t.SwappedSize)}** | **{t.RegionCount}** |");
             }
             sb.AppendLine();
+
+            // Profiling overhead detection (known profiling region names)
+            string[] profilingPatterns = { "MallocStackLogging", "Performance tool data", "stack-log" };
+            var profilingRegions = vmmap.Summary
+                .Where(r => r.RegionType != null && profilingPatterns.Any(p =>
+                    r.RegionType.Contains(p, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            if (profilingRegions.Count > 0) {
+                long profilingTotal = profilingRegions.Sum(r => r.ResidentSize);
+                sb.AppendLine("## Profiling Overhead (exclude from analysis)");
+                sb.AppendLine($"The following regions ({Fmt(profilingTotal)} resident) are created by " +
+                    "Instruments/malloc stack logging and do **not** exist in production:");
+                foreach (var r in profilingRegions) {
+                    sb.AppendLine($"- {r.RegionType}: {Fmt(r.ResidentSize)} resident");
+                }
+                sb.AppendLine();
+            }
 
             return sb.ToString();
         }
